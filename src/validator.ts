@@ -22,7 +22,7 @@ export class Validator {
 
         // 3. Construct Transaction
         const jobIdHex = Buffer.from(jobId).toString("hex");
-        const data = new TransactionPayload(`submitProof@${jobIdHex}@${resultHash}`);
+        const data = new TransactionPayload(`submit_proof@${jobIdHex}@${resultHash}`);
 
         const receiver = new Address(CONFIG.ADDRESSES.VALIDATION_REGISTRY);
 

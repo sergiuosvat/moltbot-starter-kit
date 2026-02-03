@@ -76,7 +76,7 @@ async function main() {
     const account = await provider.getAccount(senderAddress);
 
     const nameHex = Buffer.from(config.agentName).toString("hex");
-    const data = new TransactionPayload(`registerAgent@${nameHex}`);
+    const data = new TransactionPayload(`register_agent@${nameHex}`);
 
     const tx = new Transaction({
         nonce: BigInt(account.nonce),

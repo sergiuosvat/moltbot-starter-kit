@@ -34,10 +34,10 @@ async function main() {
     console.log("New Capabilities:", config.capabilities);
 
     // 3. Construct Transaction
-    // Endpoint: updateAgent
+    // Endpoint: update_agent
     // Arguments: [Name] (Optional if changing name, otherwise just pass same name)
     // We typically pass name to identify/validate, or just update metadata associated with sender.
-    // Let's assume standard: updateAgent@<NameHex>
+    // Let's assume standard: update_agent@<NameHex>
 
     const registryAddress = process.env.IDENTITY_REGISTRY_ADDRESS;
     if (!registryAddress) {
@@ -47,7 +47,7 @@ async function main() {
     const account = await provider.getAccount(senderAddress);
 
     const nameHex = Buffer.from(config.agentName).toString("hex");
-    const data = new TransactionPayload(`updateAgent@${nameHex}`);
+    const data = new TransactionPayload(`update_agent@${nameHex}`);
 
     const tx = new Transaction({
         nonce: BigInt(account.nonce),
