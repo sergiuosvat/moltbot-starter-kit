@@ -2,7 +2,9 @@ import * as dotenv from "dotenv";
 import { Facilitator } from "./facilitator";
 import { McpBridge } from "./mcp_bridge";
 import { Validator } from "./validator";
+import { JobProcessor } from "./processor";
 import { promises as fs } from "fs";
+import * as path from "path";
 
 dotenv.config();
 
@@ -10,26 +12,39 @@ async function main() {
     console.log("Starting Moltbot...");
 
     // Load Config
-    const config = JSON.parse(await fs.readFile("config.json", "utf8"));
-    console.log(`Loaded Agent: ${config.agentName} (ID: ${config.nonce})`);
+    try {
+        const configPath = path.resolve("config.json");
+        const config = JSON.parse(await fs.readFile(configPath, "utf8"));
+        console.log(`Loaded Agent: ${config.agentName} (ID: ${config.nonce})`);
+    } catch (e) {
+        console.warn("Config not found or invalid.");
+    }
 
     // Initialize Bridges
     const mcp = new McpBridge(process.env.MULTIVERSX_MCP_URL || "http://localhost:3000");
     const validator = new Validator();
     const facilitator = new Facilitator();
+    const processor = new JobProcessor();
 
     // Start Listener
     facilitator.onPayment(async (payment) => {
-        console.log(`[Job] Payment Received! Amount: ${payment.amount}`);
+        console.log(`[Job] Payment Received! Amount: ${payment.amount} ${payment.token}`);
 
-        // 1. Process Job (Simulated)
-        console.log("Processing job...");
-        await new Promise(r => setTimeout(r, 2000));
+        // 1. Process Job
+        const jobId = payment.meta?.jobId || `job-${Date.now()}`;
+        const payload = payment.meta?.payload || "";
+        console.log(`Processing Job ID: ${jobId}`);
 
-        // 2. Proof
-        const resultHash = "a1b2c3d4e5f67890"; // Dummy hash
-        const txHash = await validator.submitProof("job-123", resultHash);
-        console.log(`[Job] Proof submitted. Tx: ${txHash}`);
+        try {
+            const resultHash = await processor.process({ payload: payload });
+            console.log(`Job Result Hash: ${resultHash}`);
+
+            // 2. Submit Proof
+            const txHash = await validator.submitProof(jobId, resultHash);
+            console.log(`[Job] Proof submitted. Tx: ${txHash}`);
+        } catch (err) {
+            console.error(`[Job] Failed to process ${jobId}:`, err);
+        }
     });
 
     await facilitator.start();

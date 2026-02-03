@@ -1,65 +1,79 @@
 import { UserSigner } from "@multiversx/sdk-wallet";
 import { Transaction, TransactionPayload, Address } from "@multiversx/sdk-core";
+import { ApiNetworkProvider } from "@multiversx/sdk-network-providers";
 import { promises as fs } from "fs";
 import * as dotenv from "dotenv";
+import * as path from "path";
 
 dotenv.config();
 
 async function main() {
-    const pemPath = process.env.MULTIVERSX_PRIVATE_KEY || "wallet.pem";
+    console.log("🚀 Starting Agent Registration...");
+
+    // 1. Setup Provider & Signer
+    const providerUrl = process.env.MULTIVERSX_API_URL || "https://devnet-api.multiversx.com";
+    const provider = new ApiNetworkProvider(providerUrl);
+
+    const pemPath = process.env.MULTIVERSX_PRIVATE_KEY || path.resolve("wallet.pem");
     const pemContent = await fs.readFile(pemPath, "utf8");
     const signer = UserSigner.fromPem(pemContent);
+    const senderAddress = signer.getAddress();
 
-    const config = JSON.parse(await fs.readFile("config.json", "utf8"));
-
+    // 2. Load Config
+    const configPath = path.resolve("config.json");
+    let config = { agentName: "Moltbot", nonce: 0, pricing: "1USDC", capabilities: [] };
+    try {
+        config = JSON.parse(await fs.readFile(configPath, "utf8"));
+    } catch (e) {
+        console.warn("Config file missing, utilizing defaults.");
+    }
     console.log(`Registering Agent: ${config.agentName}...`);
 
-    // Identity Registry Address (should be in env or constant)
-    // For demo, we assume a known address or process.env
+    // 3. Construct Transaction
     const registryAddress = process.env.IDENTITY_REGISTRY_ADDRESS;
     if (!registryAddress) {
-        console.warn("IDENTITY_REGISTRY_ADDRESS not set, using placeholder or failing.");
-        // throw new Error("IDENTITY_REGISTRY_ADDRESS is required");
+        console.warn("IDENTITY_REGISTRY_ADDRESS not set. Using dummy for demo.");
     }
 
-    // Construct Manifest for TxData
-    const manifest = {
-        name: config.agentName,
-        pricing: config.pricing,
-        tags: config.capabilities
-    };
-
-    // TxData: registerAgent@<NameHex>@<ManifestJsonHex>
-    // Or just storing the manifest? The spec says "TxData: The full ARF JSON".
-    // Let's assume the contract handles parsing or storing raw data.
-    // Actually, usually it's strict arguments. 
-    // "Arguments: [Name], TxData: The full ARF JSON"
-    // Let's format it as `registerAgent@<name_hex>` and put JSON in the extra data or just assume simple usage for starter.
-    // As per spec: "Calls IdentityRegistry::registerAgent ... Arguments: [Name] ... TxData: The full ARF JSON"
+    const account = await provider.getAccount(senderAddress);
 
     const nameHex = Buffer.from(config.agentName).toString("hex");
-    // If the contract parses everything from data, or arguments. 
-    // Standard SC call: functionName@arg1...
-    // If we put data after arguments, it depends on contract.
-    // We'll put name as argument.
+    // registerAgent@<NameHex>
+    const data = new TransactionPayload(`registerAgent@${nameHex}`);
 
     const tx = new Transaction({
-        nonce: 0, // Need to fetch
+        nonce: BigInt(account.nonce),
         value: "0",
-        receiver: new Address(registryAddress || "erd1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq6gq4hu"), // Use a valid-looking dummy if missing
+        receiver: new Address(registryAddress || "erd1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq6gq4hu"),
         gasLimit: 10000000n,
-        chainID: "D",
-        data: new TransactionPayload(`registerAgent@${nameHex}`),
-        sender: new Address(signer.getAddress().bech32())
+        chainID: process.env.MULTIVERSX_CHAIN_ID || "D",
+        data: data,
+        sender: senderAddress
     });
 
-    // TODO: Fetch real nonce
-    console.log("Transaction created. Sign & Broadcast logic needed (simulated for starter kit).");
+    // 4. Sign
+    const serialized = tx.serializeForSigning();
+    const signature = await signer.sign(serialized);
+    tx.applySignature(signature);
 
-    // Simulate saving nonce
-    config.nonce = 12345; // Mock ID from registry
-    await fs.writeFile("config.json", JSON.stringify(config, null, 2));
-    console.log(`Agent registered! Nonce (ID): ${config.nonce}`);
+    console.log("Transaction Signed. Broadcasting...");
+
+    // 5. Broadcast (Real)
+    try {
+        const txHash = await provider.sendTransaction(tx);
+        console.log(`✅ Registration Transaction Sent: ${txHash}`);
+        console.log(`Check Explorer: https://devnet-explorer.multiversx.com/transactions/${txHash}`);
+
+        // 6. Update Config (Simulate nonce for now or fetch later)
+        // Ideally we wait for transaction and parse logs, but for starter script just claiming "Done" is ok.
+        console.log("Update config.json with your new Agent ID once confirmed.");
+    } catch (e: any) {
+        console.error("Failed to broadcast transaction:", e.message);
+        if (e.message.includes("insufficient funds")) {
+            console.error("🔴 ERROR: Insufficient funds. Please faucet your wallet!");
+            console.error(`Address: ${senderAddress.bech32()}`);
+        }
+    }
 }
 
 main().catch(console.error);

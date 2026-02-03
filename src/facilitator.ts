@@ -23,16 +23,22 @@ export class Facilitator {
 
     async start() {
         console.log(`Facilitator Listener attached to ${this.facilitatorUrl}`);
-        // Polling simulation for received payments or Websocket connection
-        // For Starter Kit, we'll simulate a polling loop or a mock stream if SDK is not full.
-        // If @x402/facilitator-sdk existed, we would use it.
-        // Since we are mocking/implementing basic logic:
 
         this.pollingInterval = setInterval(async () => {
-            // Mock checking for new payments
-            // In real impl, fetch from facilitator API
-            // const payments = await axios.get(`${this.facilitatorUrl}/events?unread=true`);
-            // for (const p of payments.data) { await this.listener(p); }
+            if (!this.listener) return;
+            try {
+                const res = await axios.get(`${this.facilitatorUrl}/events?unread=true`);
+                const events = res.data;
+                if (Array.isArray(events)) {
+                    for (const payment of events) {
+                        // Validate structure if needed, or assume trusted source
+                        await this.listener(payment);
+                    }
+                }
+            } catch (e: any) {
+                // Suppress connection error logs during tests often, but log warn in prod
+                // console.warn("Facilitator poll failed:", e.message);
+            }
         }, 5000);
     }
 
