@@ -7,6 +7,7 @@ import * as path from "path";
 import axios from "axios";
 import { createHash } from "crypto";
 import { CONFIG } from "../src/config";
+import { RelayerAddressCache } from "../src/utils/RelayerAddressCache";
 
 dotenv.config();
 
@@ -134,6 +135,34 @@ async function main() {
             const { data: challenge } = await axios.post(`${CONFIG.PROVIDERS.RELAYER_URL}/challenge`, {
                 address: senderAddress.bech32()
             });
+
+            // A.1 Verify/Get Relayer Address for this Shard
+            // The Relayer Service requires the inner transaction's `relayer` field to match the 
+            // relayer address for the user's shard.
+            let relayerAddressBech32 = RelayerAddressCache.get(CONFIG.PROVIDERS.RELAYER_URL, senderAddress.bech32());
+
+            if (!relayerAddressBech32) {
+                console.log("Fetching Relayer Address for Shard...");
+                try {
+                    const { data } = await axios.get(`${CONFIG.PROVIDERS.RELAYER_URL}/relayer/address/${senderAddress.bech32()}`);
+                    relayerAddressBech32 = data.relayerAddress;
+                    RelayerAddressCache.set(CONFIG.PROVIDERS.RELAYER_URL, senderAddress.bech32(), relayerAddressBech32!);
+                    console.log(`Relayer Address cached: ${relayerAddressBech32}`);
+                } catch (e: any) {
+                    console.warn(`Failed to fetch specific relayer address: ${e.message}. Proceeding without explicit relayer field (may fail if V3 strict).`);
+                }
+            } else {
+                console.log(`Using cached Relayer Address: ${relayerAddressBech32}`);
+            }
+
+            // Update Transaction with Relayer if available (Required for Relayed V3)
+            if (relayerAddressBech32) {
+                tx.setRelayer(new Address(relayerAddressBech32));
+                // Re-sign because the content changed (relayer field is part of the signature)
+                const serializedRelayed = tx.serializeForSigning();
+                const signatureRelayed = await signer.sign(serializedRelayed);
+                tx.applySignature(signatureRelayed);
+            }
 
             // B. Solve Challenge
             const challengeNonce = solveChallenge(challenge);
