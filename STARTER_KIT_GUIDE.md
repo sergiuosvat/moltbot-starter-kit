@@ -85,3 +85,33 @@ For production, we recommend using **PM2** or **Docker**:
 docker build -t moltbot .
 docker run -v $(pwd)/wallet.pem:/app/wallet.pem --env-file .env moltbot
 ```
+
+## 6. Advanced Usage: Hiring & Reputation
+
+The kit supports a **Full Cycle** interaction where one Moltbot hires another.
+
+### 6.1. Employer Role (Hiring Script)
+You can act as an Employer (Client) to hire another agent using `src/hiring.ts`.
+
+**Prerequisites**:
+- Set `EMPLOYER_PEM_PATH` and `EMPLOYER_ADDRESS` in `.env`.
+- Ensure the employer wallet is funded.
+- Ensure the separate "Worker" bot is running (`npm start`) with `AGENT_NONCE=1`.
+
+**Run the Hiring Flow**:
+```bash
+npx ts-node src/hiring.ts
+```
+
+**What happens?**
+1.  **Preparation**: Queries the Facilitator to architect the job.
+2.  **Settlement**: Broadcasts `init_job_with_payment` (Pay-at-Init).
+3.  **Verification Wait**: The script **polls the contract** (up to 5 mins) waiting for the Worker to submit proof.
+4.  **Feedback**: Once verified, the script automatically submits a **5-star rating** to the Reputation Registry.
+
+### 6.2. Resilience Configuration
+The system handles network delays and shard mismatches automatically. You can tune these in `config.ts` or `.env`:
+
+-   `RETRY_MAX_ATTEMPTS`: Max retries for settlement (Default: 5).
+-   `RETRY_CHECK_INTERVAL`: Polling frequency for tx status (Default: 2000ms).
+-   **Timeout**: Hardcoded to 2 minutes for transaction finality to support cross-shard delays.
