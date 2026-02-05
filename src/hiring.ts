@@ -6,11 +6,11 @@ import {
   Query,
   BytesValue,
   U64Value,
-  BigUIntValue
+  BigUIntValue,
 } from '@multiversx/sdk-core';
-import { ApiNetworkProvider } from '@multiversx/sdk-network-providers';
-import { CONFIG } from './config';
-import { Facilitator } from './facilitator';
+import {ApiNetworkProvider} from '@multiversx/sdk-network-providers';
+import {CONFIG} from './config';
+import {Facilitator} from './facilitator';
 import * as fs from 'fs';
 
 async function runEmployerFlow() {
@@ -54,7 +54,7 @@ async function runEmployerFlow() {
       console.log(`\n--- Settlement Attempt ${attempt} ---`);
 
       // 1. Fetch Fresh Nonce
-      const account = await provider.getAccount({ bech32: () => employerAddr });
+      const account = await provider.getAccount({bech32: () => employerAddr});
       console.log(`Fetched Sender Nonce: ${account.nonce}`);
 
       // 2. Construct Transaction
@@ -94,9 +94,9 @@ async function runEmployerFlow() {
 
       // 4. Monitor Protocol
       return await monitorTx(result.txHash);
-
-    } catch (e: any) {
-      throw new Error(`Attempt ${attempt} failed: ${e.message}`);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(`Attempt ${attempt} failed: ${message}`);
     }
   };
 
@@ -111,17 +111,19 @@ async function runEmployerFlow() {
         console.log(`Monitoring ${txHash}: ${status}`);
 
         if (status === 'success' || status === 'successful') return txHash;
-        if (status === 'fail' || status === 'failed' || status === 'invalid') throw new Error(`Tx failed on-chain: ${status}`);
-      } catch (e: any) {
-        if (e.message.includes('404')) {
+        if (status === 'fail' || status === 'failed' || status === 'invalid')
+          throw new Error(`Tx failed on-chain: ${status}`);
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        if (message.includes('404')) {
           // pending propagation
         } else {
-          console.warn(`Monitor error: ${e.message}`);
+          console.warn(`Monitor error: ${message}`);
         }
       }
       await new Promise(r => setTimeout(r, 5000));
     }
-    throw new Error("Transaction monitoring timed out after 2 minutes.");
+    throw new Error('Transaction monitoring timed out after 2 minutes.');
   };
 
   // Retry Loop
@@ -131,21 +133,22 @@ async function runEmployerFlow() {
   while (attempts <= 3) {
     try {
       const finalHash = await performSettlement(attempts);
-      console.log(`\nSUCCESS: Job Initialized and Confirmed!`);
+      console.log('\nSUCCESS: Job Initialized and Confirmed!');
       console.log(`TxHash: ${finalHash}`);
       console.log(`JobId: ${preparation.jobId}`);
       settledJobId = preparation.jobId;
       break;
-    } catch (e: any) {
-      console.warn(e.message);
-      console.warn(`Retrying in 5s...`);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.warn(message);
+      console.warn('Retrying in 5s...');
       await new Promise(r => setTimeout(r, 5000));
       attempts++;
     }
   }
 
   if (!settledJobId) {
-    console.error("Failed to settle job after 3 attempts.");
+    console.error('Failed to settle job after 3 attempts.');
     process.exit(1);
   }
 
@@ -158,7 +161,10 @@ async function runEmployerFlow() {
   await submitReputation(settledJobId, 5, provider, signer, employerAddr); // Rating 5/5
 }
 
-async function waitForJobVerification(jobId: string, provider: ApiNetworkProvider) {
+async function waitForJobVerification(
+  jobId: string,
+  provider: ApiNetworkProvider,
+) {
   const registry = Address.newFromBech32(CONFIG.ADDRESSES.VALIDATION_REGISTRY);
   const maxRetries = 60; // Wait up to 5 minutes (5s * 60)
 
@@ -168,24 +174,29 @@ async function waitForJobVerification(jobId: string, provider: ApiNetworkProvide
       const query = new Query({
         address: registry,
         func: 'is_job_verified',
-        args: [new BytesValue(Buffer.from(jobId))]
+        args: [new BytesValue(Buffer.from(jobId))],
       });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const response = await provider.queryContract(query as any);
 
       if (response.returnData && response.returnData.length > 0) {
-        const val = Buffer.from(response.returnData[0], 'base64').toString('hex');
+        const val = Buffer.from(response.returnData[0], 'base64').toString(
+          'hex',
+        );
         // true is '01' or '1'
         if (val === '01' || val === '1') {
           console.log('\nJob Verification Confirmed!');
           return;
         }
       }
-    } catch (e) {
+    } catch {
       // Ignore temporary query failures
     }
     await new Promise(r => setTimeout(r, 5000));
   }
-  throw new Error('\nJob verification timed out. Worker did not submit proof in time.');
+  throw new Error(
+    '\nJob verification timed out. Worker did not submit proof in time.',
+  );
 }
 
 async function submitReputation(
@@ -193,10 +204,10 @@ async function submitReputation(
   rating: number,
   provider: ApiNetworkProvider,
   signer: UserSigner,
-  sender: string
+  sender: string,
 ) {
   // Contract: submit_feedback(job_id, agent_nonce, rating)
-  // We strictly need the agent nonce matching the job. 
+  // We strictly need the agent nonce matching the job.
   // In this script we know it is '1' (const agentNonce = 1 above).
   // In a real app we'd fetch it from the JobData.
   const agentNonce = 1;
@@ -205,7 +216,7 @@ async function submitReputation(
   const senderAddr = Address.newFromBech32(sender);
 
   // Fetch Nonce
-  const account = await provider.getAccount({ bech32: () => sender });
+  const account = await provider.getAccount({bech32: () => sender});
 
   const tx = new Transaction({
     nonce: BigInt(account.nonce),
@@ -215,15 +226,15 @@ async function submitReputation(
     value: 0n,
     sender: senderAddr,
     data: Buffer.from(
-      `submit_feedback@${Buffer.from(jobId).toString('hex')}@${new U64Value(agentNonce).toString()}@${new BigUIntValue(BigInt(rating)).toString()}`
-    )
+      `submit_feedback@${Buffer.from(jobId).toString('hex')}@${new U64Value(agentNonce).toString()}@${new BigUIntValue(BigInt(rating)).toString()}`,
+    ),
   });
 
   const computer = new TransactionComputer();
   const bytesToSign = computer.computeBytesForSigning(tx);
   tx.signature = await signer.sign(bytesToSign);
 
-  console.log(`Broadcasting feedback tx...`);
+  console.log('Broadcasting feedback tx...');
   const txHash = await provider.sendTransaction(tx);
   console.log(`Feedback Tx: ${txHash}`);
 
