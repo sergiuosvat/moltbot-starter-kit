@@ -1,5 +1,5 @@
 import { UserSigner } from "@multiversx/sdk-wallet";
-import { Transaction, TransactionPayload, Address, TransactionComputer } from "@multiversx/sdk-core";
+import { Transaction, Address, TransactionComputer } from "@multiversx/sdk-core";
 import { ApiNetworkProvider } from "@multiversx/sdk-network-providers";
 import axios from "axios";
 import { promises as fs } from "fs";
@@ -24,22 +24,22 @@ export class Validator {
         const pemPath = process.env.MULTIVERSX_PRIVATE_KEY || path.resolve("wallet.pem");
         const pemContent = await fs.readFile(pemPath, "utf8");
         const signer = UserSigner.fromPem(pemContent);
-        const senderAddress = signer.getAddress();
+        const senderAddress = new Address(signer.getAddress().bech32());
 
         // 2. Fetch Account State (Nonce)
-        const account = await provider.getAccount(senderAddress);
+        const account = await provider.getAccount({ bech32: () => senderAddress.toBech32() });
 
         // 3. Construct Transaction
-        const jobIdHex = Buffer.from(jobId).toString("hex");
-        const data = new TransactionPayload(`submit_proof@${jobIdHex}@${resultHash}`);
+        const probIdHex = Buffer.from(jobId).toString("hex");
+        const data = Buffer.from(`submit_proof@${probIdHex}@${resultHash}`);
 
         const receiver = new Address(CONFIG.ADDRESSES.VALIDATION_REGISTRY);
 
         const tx = new Transaction({
             nonce: BigInt(account.nonce),
-            value: "0",
+            value: 0n,
             receiver: receiver,
-            gasLimit: CONFIG.GAS_LIMITS.SUBMIT_PROOF,
+            gasLimit: BigInt(CONFIG.GAS_LIMITS.SUBMIT_PROOF),
             chainID: CONFIG.CHAIN_ID,
             data: data,
             sender: senderAddress
@@ -56,7 +56,7 @@ export class Validator {
         // 5. Sign
         const serialized = this.txComputer.computeBytesForSigning(tx);
         const signature = await signer.sign(serialized);
-        tx.applySignature(signature);
+        tx.signature = signature;
 
         // 6. Broadcast (with Retry)
         let attempts = 0;

@@ -1,5 +1,5 @@
 import { UserSigner } from "@multiversx/sdk-wallet";
-import { Transaction, TransactionPayload, Address } from "@multiversx/sdk-core";
+import { Transaction, Address, TransactionComputer } from "@multiversx/sdk-core";
 import { ApiNetworkProvider } from "@multiversx/sdk-network-providers";
 import { promises as fs } from "fs";
 import * as dotenv from "dotenv";
@@ -9,6 +9,7 @@ dotenv.config();
 
 async function main() {
     console.log("🚀 Starting Manifest Update...");
+    const txComputer = new TransactionComputer();
 
     // 1. Setup Provider & Signer
     const providerUrl = process.env.MULTIVERSX_API_URL || "https://devnet-api.multiversx.com";
@@ -24,7 +25,7 @@ async function main() {
     }
 
     const signer = UserSigner.fromPem(pemContent);
-    const senderAddress = signer.getAddress();
+    const senderAddress = new Address(signer.getAddress().bech32());
 
     // 2. Load Config to get new details
     const configPath = path.resolve("config.json");
@@ -42,7 +43,7 @@ async function main() {
         process.exit(1);
     }
 
-    const account = await provider.getAccount(senderAddress);
+    const account = await provider.getAccount({ bech32: () => senderAddress.toBech32() });
 
     // Argument 1: Agent Nonce (NFT token nonce)
     if (!config.nonce || config.nonce === 0) {
@@ -57,7 +58,7 @@ async function main() {
 
     // Argument 3: New Public Key - can keep same or update
     // Default to current signer's public key
-    const publicKeyHex = senderAddress.hex();
+    const publicKeyHex = senderAddress.toHex();
 
     // Argument 4: Metadata (optional)
     let metadataHex = "";
@@ -74,11 +75,11 @@ async function main() {
     if (config.metadata?.length > 0) console.log(`New Metadata: ${config.metadata.length} entries`);
 
     // Format: update_agent@<nonceHex>@<uriHex>@<publicKeyHex>[@<key1Hex>@<value1Hex>...]
-    const data = new TransactionPayload(`update_agent@${nonceHex}@${uriHex}@${publicKeyHex}${metadataHex}`);
+    const data = Buffer.from(`update_agent@${nonceHex}@${uriHex}@${publicKeyHex}${metadataHex}`);
 
     const tx = new Transaction({
         nonce: BigInt(account.nonce),
-        value: "0",
+        value: 0n,
         receiver: new Address(registryAddress),
         gasLimit: 10000000n,
         chainID: process.env.MULTIVERSX_CHAIN_ID || "D",
@@ -87,9 +88,10 @@ async function main() {
     });
 
     // 4. Sign
-    const serialized = tx.serializeForSigning();
+    // 4. Sign
+    const serialized = txComputer.computeBytesForSigning(tx);
     const signature = await signer.sign(serialized);
-    tx.applySignature(signature);
+    tx.signature = signature;
 
     console.log("Transaction Signed. Broadcasting...");
 

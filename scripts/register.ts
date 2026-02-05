@@ -1,5 +1,5 @@
 import { UserSigner } from "@multiversx/sdk-wallet";
-import { Transaction, TransactionPayload, Address } from "@multiversx/sdk-core";
+import { Transaction, Address, TransactionComputer } from "@multiversx/sdk-core";
 import { ApiNetworkProvider } from "@multiversx/sdk-network-providers";
 import { promises as fs } from "fs";
 import * as dotenv from "dotenv";
@@ -10,6 +10,9 @@ import { CONFIG } from "../src/config";
 import { RelayerAddressCache } from "../src/utils/RelayerAddressCache";
 
 dotenv.config();
+
+// Setup TransactionComputer for serialization
+const txComputer = new TransactionComputer();
 
 /**
  * Solve a Lib-based PoW Challenge for the Relayer
@@ -60,7 +63,7 @@ async function main() {
     const pemPath = process.env.MULTIVERSX_PRIVATE_KEY || path.resolve("wallet.pem");
     const pemContent = await fs.readFile(pemPath, "utf8");
     const signer = UserSigner.fromPem(pemContent);
-    const senderAddress = signer.getAddress();
+    const senderAddress = new Address(signer.getAddress().bech32());
 
     // 2. Load Config
     const configPath = path.resolve("config.json");
@@ -74,7 +77,7 @@ async function main() {
 
     // 3. Construct Transaction with ALL 3 required arguments
     const registryAddress = CONFIG.ADDRESSES.IDENTITY_REGISTRY;
-    const account = await provider.getAccount(senderAddress);
+    const account = await provider.getAccount({ bech32: () => senderAddress.toBech32() });
 
     // Argument 1: Agent Name (required)
     const nameHex = Buffer.from(config.agentName).toString("hex");
@@ -86,7 +89,7 @@ async function main() {
 
     // Argument 3: Public Key - for signature verification and secure communication
     // Derive from the signer's public key (hex encoded)
-    const publicKeyHex = senderAddress.hex();
+    const publicKeyHex = senderAddress.toHex();
 
     // Argument 4: Metadata (optional) - EIP-8004 compatible key-value pairs
     // Format: register_agent@<nameHex>@<uriHex>@<publicKeyHex>[@<metadataLength>@<key1Hex>@<value1Hex>...]
@@ -107,22 +110,23 @@ async function main() {
     if (config.metadata?.length > 0) console.log(`Metadata: ${config.metadata.length} entries`);
 
     // Format: register_agent@<nameHex>@<uriHex>@<publicKeyHex>[@<key1Hex>@<value1Hex>...]
-    const data = new TransactionPayload(`register_agent@${nameHex}@${uriHex}@${publicKeyHex}${metadataHex}`);
+    const data = Buffer.from(`register_agent@${nameHex}@${uriHex}@${publicKeyHex}${metadataHex}`);
 
     const tx = new Transaction({
         nonce: BigInt(account.nonce),
-        value: "0",
+        value: 0n,
         receiver: new Address(registryAddress),
-        gasLimit: CONFIG.GAS_LIMITS.REGISTER,
+        gasLimit: BigInt(CONFIG.GAS_LIMITS.REGISTER),
         chainID: CONFIG.CHAIN_ID,
         data: data,
         sender: senderAddress
     });
 
     // Sign the transaction (always required, even for relaying)
-    const serialized = tx.serializeForSigning();
+    // Sign the transaction (always required, even for relaying)
+    const serialized = txComputer.computeBytesForSigning(tx);
     const signature = await signer.sign(serialized);
-    tx.applySignature(signature);
+    tx.signature = signature;
 
     // 4. Determine Strategy (Local vs Relayer)
     const balance = BigInt(account.balance.toString());
@@ -133,20 +137,20 @@ async function main() {
         try {
             // A. Get Challenge
             const { data: challenge } = await axios.post(`${CONFIG.PROVIDERS.RELAYER_URL}/challenge`, {
-                address: senderAddress.bech32()
+                address: senderAddress.toBech32()
             });
 
             // A.1 Verify/Get Relayer Address for this Shard
             // The Relayer Service requires the inner transaction's `relayer` field to match the 
             // relayer address for the user's shard.
-            let relayerAddressBech32 = RelayerAddressCache.get(CONFIG.PROVIDERS.RELAYER_URL, senderAddress.bech32());
+            let relayerAddressBech32 = RelayerAddressCache.get(CONFIG.PROVIDERS.RELAYER_URL, senderAddress.toBech32());
 
             if (!relayerAddressBech32) {
                 console.log("Fetching Relayer Address for Shard...");
                 try {
-                    const { data } = await axios.get(`${CONFIG.PROVIDERS.RELAYER_URL}/relayer/address/${senderAddress.bech32()}`);
+                    const { data } = await axios.get(`${CONFIG.PROVIDERS.RELAYER_URL}/relayer/address/${senderAddress.toBech32()}`);
                     relayerAddressBech32 = data.relayerAddress;
-                    RelayerAddressCache.set(CONFIG.PROVIDERS.RELAYER_URL, senderAddress.bech32(), relayerAddressBech32!);
+                    RelayerAddressCache.set(CONFIG.PROVIDERS.RELAYER_URL, senderAddress.toBech32(), relayerAddressBech32!);
                     console.log(`Relayer Address cached: ${relayerAddressBech32}`);
                 } catch (e: any) {
                     console.warn(`Failed to fetch specific relayer address: ${e.message}. Proceeding without explicit relayer field (may fail if V3 strict).`);
@@ -159,9 +163,9 @@ async function main() {
             if (relayerAddressBech32) {
                 tx.relayer = new Address(relayerAddressBech32);
                 // Re-sign because the content changed (relayer field is part of the signature)
-                const serializedRelayed = tx.serializeForSigning();
+                const serializedRelayed = txComputer.computeBytesForSigning(tx);
                 const signatureRelayed = await signer.sign(serializedRelayed);
-                tx.applySignature(signatureRelayed);
+                tx.signature = signatureRelayed;
             }
 
             // B. Solve Challenge
