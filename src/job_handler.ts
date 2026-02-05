@@ -60,39 +60,80 @@ export class JobHandler {
       throw new Error(`Submission failed after ${attempt - 1} attempts.`);
     }
 
+    console.log(`[JobHandler] Submission attempt ${attempt} for job ${jobId}`);
+
     let txHash: string;
     try {
+      // 1. Broadcast (Always recreate/re-sign in submitProof if we wanted to be super safe,
+      // but here we just call it which fetches nonce and signs)
       txHash = await this.validator.submitProof(jobId, resultHash);
-      console.log(
-        `[JobHandler] Proof submitted (Attempt ${attempt}). Tx: ${txHash}`,
-      );
+      console.log(`[JobHandler] Proof broadcasted. Tx: ${txHash}`);
     } catch (e) {
       console.warn(
-        `[JobHandler] Submission attempt ${attempt} failed immediately: ${(e as Error).message}`,
+        `[JobHandler] Broadcast failed (Attempt ${attempt}): ${(e as Error).message}`,
       );
-      // If immediate broadcast failure, wait and retry
       await this.delay(CONFIG.RETRY.SUBMISSION_DELAY);
       return this.submitWithRetry(jobId, resultHash, attempt + 1);
     }
 
-    // Monitoring Loop
-    console.log(
-      `[JobHandler] Waiting ${CONFIG.RETRY.SUBMISSION_DELAY}ms to verify execution...`,
-    );
-    await this.delay(CONFIG.RETRY.SUBMISSION_DELAY);
-
-    const status = await this.validator.getTxStatus(txHash);
-    console.log(`[JobHandler] Tx ${txHash} status: ${status}`);
-
-    if (status === 'success' || status === 'successful') {
+    // 2. Monitoring Phase
+    const success = await this.monitorTransaction(txHash);
+    if (success) {
       console.log(`[JobHandler] Job ${jobId} COMPLETED successfully.`);
       return;
     }
 
+    // 3. Retry Phase (only if monitorTransaction failed or timed out)
     console.warn(
-      `[JobHandler] Tx ${txHash} is ${status} after delay. Retrying submission...`,
+      `[JobHandler] Tx ${txHash} failed or timed out. Re-submitting job ${jobId}...`,
     );
     return this.submitWithRetry(jobId, resultHash, attempt + 1);
+  }
+
+  private async monitorTransaction(txHash: string): Promise<boolean> {
+    const startTime = Date.now();
+    const maxMonitorTime = 120000; // 2 minutes for cross-shard support
+    let pollInterval = CONFIG.RETRY.CHECK_INTERVAL;
+    let notFoundCount = 0;
+
+    while (Date.now() - startTime < maxMonitorTime) {
+      const status = await this.validator.getTxStatus(txHash);
+      console.log(`[JobHandler] Monitoring ${txHash}: status is ${status}`);
+
+      if (status === 'success' || status === 'successful') {
+        return true;
+      }
+
+      if (status === 'fail' || status === 'failed' || status === 'invalid') {
+        console.error(`[JobHandler] Tx ${txHash} confirmed failure: ${status}`);
+        return false;
+      }
+
+      if (status === 'not_found') {
+        notFoundCount++;
+        // If not found for more than 30 seconds (assuming ~5-15 polls), could be a broadcast issue
+        if (notFoundCount > 10 && Date.now() - startTime > 30000) {
+          console.warn(
+            `[JobHandler] Tx ${txHash} not found for >30s. Considering broadcast failure.`,
+          );
+          return false;
+        }
+      } else {
+        notFoundCount = 0; // Reset if we see 'pending' or anything else
+      }
+
+      // If pending or unknown, wait and continue monitoring
+      // We do NOT resend the transaction here.
+      await this.delay(pollInterval);
+
+      // Slightly increase poll interval (cap at 10s)
+      pollInterval = Math.min(pollInterval + 1000, 10000);
+    }
+
+    console.warn(
+      `[JobHandler] Monitoring ${txHash} timed out after 2 minutes.`,
+    );
+    return false;
   }
 
   private delay(ms: number): Promise<void> {

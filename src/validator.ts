@@ -91,12 +91,16 @@ export class Validator {
 
         console.log(`Transaction sent: ${txHash}`);
         return txHash;
-      } catch (e: any) {
-        const msg = e.response?.data?.error || e.message;
-        const status = e.response?.status;
+      } catch (e: unknown) {
+        const err = e as {
+          response?: {data?: {error?: string}; status?: number};
+          message?: string;
+        };
+        const msg = err.response?.data?.error || err.message;
+        const status = err.response?.status;
 
         // Auto-Registration on 403
-        if (status === 403 && msg.includes('register')) {
+        if (status === 403 && msg?.includes('register')) {
           console.warn('Agent not registered. Initiating Auto-Registration...');
           try {
             await this.registerAgent();
@@ -105,8 +109,11 @@ export class Validator {
             );
             attempts--; // Don't count registration as a failed attempt
             continue;
-          } catch (regError: any) {
-            console.error('Auto-Registration failed:', regError.message);
+          } catch (regError) {
+            console.error(
+              'Auto-Registration failed:',
+              (regError as Error).message,
+            );
             throw regError; // Fail fast if registration fails
           }
         }
@@ -216,8 +223,13 @@ export class Validator {
         provider.getTransaction(txHash),
         'Fetching Transaction Status',
       );
-      return tx.status.toString();
-    } catch (e) {
+      return tx.status.toString().toLowerCase();
+    } catch (e: unknown) {
+      const err = e as {response?: {status?: number}; message?: string};
+      // Handle 404 as 'not_found'
+      if (err.response?.status === 404 || err.message?.includes('404')) {
+        return 'not_found';
+      }
       console.warn(
         `Failed to fetch status for ${txHash}: ${(e as Error).message}`,
       );

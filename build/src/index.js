@@ -20,11 +20,11 @@ async function main() {
         const config = JSON.parse(await fs_1.promises.readFile(configPath, 'utf8'));
         console.log(`Loaded Agent: ${config.agentName} (ID: ${config.nonce})`);
     }
-    catch (e) {
+    catch {
         console.warn('Config not found or invalid.');
     }
     // Initialize Bridges
-    const mcp = new mcp_bridge_1.McpBridge(config_1.CONFIG.PROVIDERS.MCP_URL);
+    new mcp_bridge_1.McpBridge(config_1.CONFIG.PROVIDERS.MCP_URL);
     const validator = new validator_1.Validator();
     const facilitator = new facilitator_1.Facilitator();
     const processor = new processor_1.JobProcessor();
@@ -54,7 +54,7 @@ async function main() {
         console.log(`[Job] Payment Received! Amount: ${payment.amount} ${payment.token}`);
         const jobId = payment.meta?.jobId || `job-${Date.now()}`;
         // Fire-and-Forget Handler
-        handler.handle(jobId, payment);
+        void handler.handle(jobId, payment);
     });
     await facilitator.start();
     console.log('Listening for x402 payments...');

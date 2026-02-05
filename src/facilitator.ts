@@ -4,7 +4,11 @@ import {CONFIG} from './config';
 export interface PaymentEvent {
   amount: string;
   token: string;
-  meta: any;
+  meta?: {
+    jobId?: string;
+    payload?: string;
+    [key: string]: unknown;
+  };
 }
 
 type PaymentCallback = (payment: PaymentEvent) => Promise<void>;
@@ -38,9 +42,9 @@ export class Facilitator {
             await this.listener(payment);
           }
         }
-      } catch (e: any) {
+      } catch {
         // Suppress connection error logs during tests often, but log warn in prod
-        // console.warn("Facilitator poll failed:", e.message);
+        // console.warn("Facilitator poll failed:", (e as Error).message);
       }
     }, 5000);
   }

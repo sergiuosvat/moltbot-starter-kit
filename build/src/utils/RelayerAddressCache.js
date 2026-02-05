@@ -12,7 +12,7 @@ class RelayerAddressCache {
         try {
             return JSON.parse(fs.readFileSync(CACHE_FILE, 'utf8'));
         }
-        catch (e) {
+        catch {
             console.warn('Failed to load relayer cache, starting fresh.');
             return {};
         }

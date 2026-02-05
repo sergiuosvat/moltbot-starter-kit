@@ -30,9 +30,9 @@ export class JobProcessor {
         });
         content =
           typeof res.data === 'string' ? res.data : JSON.stringify(res.data);
-      } catch (e: any) {
+      } catch (e) {
         // Propagate error if it's the domain check, otherwise logging warning approach for availability
-        if (e.message.includes('Domain not allowed')) throw e;
+        if ((e as Error).message.includes('Domain not allowed')) throw e;
 
         console.warn('Failed to fetch URL, using raw payload');
       }

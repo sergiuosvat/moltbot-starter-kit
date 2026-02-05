@@ -28,9 +28,9 @@ class Facilitator {
                     }
                 }
             }
-            catch (e) {
+            catch {
                 // Suppress connection error logs during tests often, but log warn in prod
-                // console.warn("Facilitator poll failed:", e.message);
+                // console.warn("Facilitator poll failed:", (e as Error).message);
             }
         }, 5000);
     }

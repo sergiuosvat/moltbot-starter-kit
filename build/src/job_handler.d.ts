@@ -8,5 +8,6 @@ export declare class JobHandler {
     handle(jobId: string, payment: PaymentEvent): Promise<void>;
     private processWithRetry;
     private submitWithRetry;
+    private monitorTransaction;
     private delay;
 }

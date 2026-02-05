@@ -1,7 +1,11 @@
 export interface PaymentEvent {
     amount: string;
     token: string;
-    meta: any;
+    meta?: {
+        jobId?: string;
+        payload?: string;
+        [key: string]: unknown;
+    };
 }
 type PaymentCallback = (payment: PaymentEvent) => Promise<void>;
 export declare class Facilitator {

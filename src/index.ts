@@ -20,12 +20,12 @@ async function main() {
     const configPath = path.resolve('config.json');
     const config = JSON.parse(await fs.readFile(configPath, 'utf8'));
     console.log(`Loaded Agent: ${config.agentName} (ID: ${config.nonce})`);
-  } catch (e) {
+  } catch {
     console.warn('Config not found or invalid.');
   }
 
   // Initialize Bridges
-  const mcp = new McpBridge(CONFIG.PROVIDERS.MCP_URL);
+  new McpBridge(CONFIG.PROVIDERS.MCP_URL);
   const validator = new Validator();
   const facilitator = new Facilitator();
   const processor = new JobProcessor();
@@ -56,9 +56,9 @@ async function main() {
         'No relayer address returned, falling back to direct transactions.',
       );
     }
-  } catch (e: any) {
+  } catch (e) {
     console.warn(
-      `Failed to init relayer: ${e.message}. Using direct transactions.`,
+      `Failed to init relayer: ${(e as Error).message}. Using direct transactions.`,
     );
   }
 
@@ -71,7 +71,7 @@ async function main() {
     const jobId = payment.meta?.jobId || `job-${Date.now()}`;
 
     // Fire-and-Forget Handler
-    handler.handle(jobId, payment);
+    void handler.handle(jobId, payment);
   });
 
   await facilitator.start();

@@ -73,10 +73,11 @@ class Validator {
                 return txHash;
             }
             catch (e) {
-                const msg = e.response?.data?.error || e.message;
-                const status = e.response?.status;
+                const err = e;
+                const msg = err.response?.data?.error || err.message;
+                const status = err.response?.status;
                 // Auto-Registration on 403
-                if (status === 403 && msg.includes('register')) {
+                if (status === 403 && msg?.includes('register')) {
                     console.warn('Agent not registered. Initiating Auto-Registration...');
                     try {
                         await this.registerAgent();
@@ -175,9 +176,14 @@ class Validator {
         });
         try {
             const tx = await this.withTimeout(provider.getTransaction(txHash), 'Fetching Transaction Status');
-            return tx.status.toString();
+            return tx.status.toString().toLowerCase();
         }
         catch (e) {
+            const err = e;
+            // Handle 404 as 'not_found'
+            if (err.response?.status === 404 || err.message?.includes('404')) {
+                return 'not_found';
+            }
             console.warn(`Failed to fetch status for ${txHash}: ${e.message}`);
             return 'unknown';
         }

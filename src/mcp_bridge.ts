@@ -11,7 +11,7 @@ export class McpBridge {
     try {
       const res = await axios.get(`${this.baseUrl}/agents/${nonce}/reputation`);
       return res.data.score;
-    } catch (e) {
+    } catch {
       console.warn('Failed to fetch reputation, returning default 50');
       return 50;
     }
@@ -21,7 +21,7 @@ export class McpBridge {
     try {
       const res = await axios.get(`${this.baseUrl}/network/economics`);
       return res.data.gasPrice;
-    } catch (e) {
+    } catch {
       return '1000000000'; // Default
     }
   }
