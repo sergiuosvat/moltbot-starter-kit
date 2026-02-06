@@ -33,30 +33,34 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-const sdk_network_providers_1 = require("@multiversx/sdk-network-providers");
-const sdk_wallet_1 = require("@multiversx/sdk-wallet");
-const fs_1 = require("fs");
-const path = __importStar(require("path"));
-const dotenv = __importStar(require("dotenv"));
-dotenv.config();
-async function main() {
-    const walletPath = process.env.MULTIVERSX_PRIVATE_KEY ||
-        path.resolve(__dirname, '../wallet.pem');
-    try {
-        const pemContent = await fs_1.promises.readFile(walletPath, 'utf8');
-        const signer = sdk_wallet_1.UserSigner.fromPem(pemContent);
-        const address = signer.getAddress();
-        const providerUrl = process.env.MULTIVERSX_API_URL || 'https://devnet-api.multiversx.com';
-        const provider = new sdk_network_providers_1.ApiNetworkProvider(providerUrl);
-        const account = await provider.getAccount(address);
-        console.log(`\n🔍 Checking Balance for: ${address.bech32()}`);
-        console.log(`🌍 Network: ${providerUrl}`);
-        console.log(`💰 Balance: ${(BigInt(account.balance.toString()) / 1000000000000000000n).toString()} EGLD`);
-        console.log(`🔢 Nonce: ${account.nonce}`);
+exports.BlockchainService = void 0;
+const sdk_core_1 = require("@multiversx/sdk-core");
+const config_1 = require("./config");
+const identityAbiJson = __importStar(require("./abis/identity-registry.abi.json"));
+class BlockchainService {
+    identityController;
+    constructor() {
+        const entrypoint = new sdk_core_1.DevnetEntrypoint({ url: config_1.CONFIG.API_URL });
+        const abi = sdk_core_1.Abi.create(identityAbiJson);
+        this.identityController = entrypoint.createSmartContractController(abi);
     }
-    catch (error) {
-        console.error('Error checking balance:', error);
+    async getAgentDetails(nonce) {
+        const results = await this.identityController.query({
+            contract: sdk_core_1.Address.newFromBech32(config_1.CONFIG.ADDRESSES.IDENTITY_REGISTRY),
+            function: 'get_agent',
+            arguments: [nonce],
+        });
+        // The result is already parsed according to the ABI
+        return results[0];
+    }
+    async getAgentServicePrice(nonce, serviceId) {
+        const results = await this.identityController.query({
+            contract: sdk_core_1.Address.newFromBech32(config_1.CONFIG.ADDRESSES.IDENTITY_REGISTRY),
+            function: 'get_agent_service_price',
+            arguments: [nonce, Buffer.from(serviceId)],
+        });
+        return results[0];
     }
 }
-void main();
-//# sourceMappingURL=check_balance.js.map
+exports.BlockchainService = BlockchainService;
+//# sourceMappingURL=BlockchainService.js.map
