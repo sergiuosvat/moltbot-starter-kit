@@ -1,10 +1,17 @@
 import {UserSigner} from '@multiversx/sdk-wallet';
-import {Transaction, Address, TransactionComputer} from '@multiversx/sdk-core';
+import {
+  Address,
+  TransactionComputer,
+  Abi,
+  DevnetEntrypoint,
+} from '@multiversx/sdk-core';
 import {ApiNetworkProvider} from '@multiversx/sdk-network-providers';
 import axios from 'axios';
 import {promises as fs} from 'fs';
 import * as path from 'path';
 import {CONFIG} from './config';
+import * as identityAbiJson from './abis/identity-registry.abi.json';
+import * as validationAbiJson from './abis/validation-registry.abi.json';
 
 export class Validator {
   private relayerUrl: string | null = null;
@@ -36,28 +43,29 @@ export class Validator {
       'Fetching Account',
     );
 
-    // 3. Construct Transaction
-    const probIdHex = Buffer.from(jobId).toString('hex');
-    const data = Buffer.from(`submit_proof@${probIdHex}@${resultHash}`);
+    // 3. Construct Transaction using ABI Factory
+    const entrypoint = new DevnetEntrypoint({url: CONFIG.API_URL});
+    const validationAbi = Abi.create(validationAbiJson);
+    const factory =
+      entrypoint.createSmartContractTransactionsFactory(validationAbi);
 
     const receiver = new Address(CONFIG.ADDRESSES.VALIDATION_REGISTRY);
 
-    const tx = new Transaction({
-      nonce: BigInt(account.nonce),
-      value: 0n,
-      receiver: receiver,
+    const tx = await factory.createTransactionForExecute(senderAddress, {
+      contract: receiver,
+      function: 'submit_proof',
       gasLimit: BigInt(CONFIG.GAS_LIMITS.SUBMIT_PROOF),
-      chainID: CONFIG.CHAIN_ID,
-      data: data,
-      sender: senderAddress,
+      arguments: [Buffer.from(jobId), Buffer.from(resultHash, 'hex')],
     });
+
+    tx.nonce = BigInt(account.nonce); // Override with fetched nonce
 
     // 4. Relayer or Direct?
     if (this.relayerUrl && this.relayerAddress) {
       console.log('Using Gasless Relayer V3...');
       tx.relayer = new Address(this.relayerAddress);
       tx.version = 2;
-      tx.gasLimit = BigInt(CONFIG.GAS_LIMITS.SUBMIT_PROOF) + 50000n; // Add gas for relaying
+      tx.gasLimit = BigInt(tx.gasLimit.toString()) + 50000n; // Add gas for relaying
     }
 
     // 5. Sign
@@ -158,26 +166,27 @@ export class Validator {
       bech32: () => senderAddress.toBech32(),
     });
 
-    const data = Buffer.from(
-      'register_agent@' + Buffer.from('moltbot').toString('hex'),
-    );
+    // 3. Create Registration Tx using ABI Factory
+    const entrypoint = new DevnetEntrypoint({url: CONFIG.API_URL});
+    const identityAbi = Abi.create(identityAbiJson);
+    const factory =
+      entrypoint.createSmartContractTransactionsFactory(identityAbi);
 
-    const tx = new Transaction({
-      nonce: BigInt(account.nonce),
-      value: 0n,
-      receiver: new Address(CONFIG.ADDRESSES.IDENTITY_REGISTRY), // Send to Identity Registry!
-      gasLimit: 6000000n, // Registration is heavier
-      chainID: CONFIG.CHAIN_ID,
-      data: data,
-      sender: senderAddress,
-      version: 2,
+    const tx = await factory.createTransactionForExecute(senderAddress, {
+      contract: new Address(CONFIG.ADDRESSES.IDENTITY_REGISTRY),
+      function: 'register_agent',
+      gasLimit: 6000000n,
+      arguments: [
+        Buffer.from('moltbot'), // name
+        Buffer.from('https://moltbot.io'), // uri
+        Buffer.from(senderAddress.getPublicKey()), // public_key
+        [], // metadata (empty list)
+      ],
     });
 
+    tx.nonce = BigInt(account.nonce);
+    tx.version = 2;
     tx.relayer = new Address(this.relayerAddress);
-
-    const comp = new TransactionComputer();
-    const serialized = comp.computeBytesForSigning(tx);
-    tx.signature = await signer.sign(serialized);
 
     // 4. Relay with Nonce
     console.log('Relaying Registration Transaction...');

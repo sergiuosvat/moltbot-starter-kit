@@ -3,18 +3,12 @@ import {
   Transaction,
   TransactionComputer,
   UserSigner,
-  Query,
-  ArgSerializer,
-  BytesValue,
-  AbiRegistry,
-  SmartContractTransactionsFactory,
-  TransactionsFactoryConfig,
-  NativeSerializer,
-  BigUIntValue,
+  Abi,
+  DevnetEntrypoint,
 } from '@multiversx/sdk-core';
-import {ApiNetworkProvider} from '@multiversx/sdk-network-providers';
-import {CONFIG} from './config';
-import {Facilitator} from './facilitator';
+import { ApiNetworkProvider } from '@multiversx/sdk-network-providers';
+import { CONFIG } from './config';
+import { Facilitator } from './facilitator';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -59,7 +53,7 @@ async function runEmployerFlow() {
       console.log(`\n--- Settlement Attempt ${attempt} ---`);
 
       // 1. Fetch Fresh Nonce
-      const account = await provider.getAccount({bech32: () => employerAddr});
+      const account = await provider.getAccount({ bech32: () => employerAddr });
       console.log(`Fetched Sender Nonce: ${account.nonce}`);
 
       // 2. Construct Transaction
@@ -159,17 +153,14 @@ async function runEmployerFlow() {
 
   // 5. Wait for Verification (Worker to submit proof)
   console.log('\n--- Waiting for Job Verification ---');
-  await waitForJobVerification(settledJobId, provider);
+  await waitForJobVerification(settledJobId);
 
   // 6. Submit Reputation
   console.log('\n--- Submitting Reputation Feedback ---');
   await submitReputation(settledJobId, 5, provider, signer, employerAddr); // Rating 5/5
 }
 
-async function waitForJobVerification(
-  jobId: string,
-  provider: ApiNetworkProvider,
-) {
+async function waitForJobVerification(jobId: string) {
   const registry = Address.newFromBech32(CONFIG.ADDRESSES.VALIDATION_REGISTRY);
   const maxRetries = 60; // Wait up to 5 minutes (5s * 60)
 
@@ -177,29 +168,26 @@ async function waitForJobVerification(
     __dirname,
     '../src/abis/validation-registry.abi.json',
   );
-  const abi = AbiRegistry.create(JSON.parse(fs.readFileSync(abiPath, 'utf8')));
+  const entrypoint = new DevnetEntrypoint({ url: CONFIG.API_URL });
+  const abi = Abi.create(JSON.parse(fs.readFileSync(abiPath, 'utf8')));
+  const controller = entrypoint.createSmartContractController(abi);
 
   for (let i = 0; i < maxRetries; i++) {
     process.stdout.write('.');
     try {
-      const serializer = new ArgSerializer();
-      const query = new Query({
-        address: registry,
-        func: 'is_job_verified',
-        args: [new BytesValue(Buffer.from(jobId))],
-      }) as any;
-      const response = await provider.queryContract(query);
-      const values = serializer.buffersToValues(
-        response.getReturnDataParts(),
-        abi.getEndpoint('is_job_verified').output,
-      );
+      const results = await controller.query({
+        contract: registry,
+        function: 'is_job_verified',
+        arguments: [Buffer.from(jobId)],
+      });
 
-      if (values[0]?.valueOf() === true) {
+      if (results[0] === true) {
         console.log('\nJob Verification Confirmed!');
         return;
       }
-    } catch {
+    } catch (e: unknown) {
       // Ignore temporary query failures
+      console.warn('Query failed:', (e as Error).message);
     }
     await new Promise(r => setTimeout(r, 5000));
   }
@@ -223,25 +211,17 @@ async function submitReputation(
     __dirname,
     '../src/abis/reputation-registry.abi.json',
   );
-  const abi = AbiRegistry.create(JSON.parse(fs.readFileSync(abiPath, 'utf8')));
+  const abi = Abi.create(JSON.parse(fs.readFileSync(abiPath, 'utf8')));
 
-  const account = await provider.getAccount({bech32: () => sender});
+  const account = await provider.getAccount({ bech32: () => sender });
 
-  const factory = new SmartContractTransactionsFactory({
-    abi,
-    config: new TransactionsFactoryConfig({chainID: CONFIG.CHAIN_ID}),
-  });
-
-  const endpoint = abi.getEndpoint('submit_feedback');
-  const typedArgs = NativeSerializer.nativeToTypedValues(
-    [Buffer.from(jobId), BigInt(agentNonce), new BigUIntValue(BigInt(rating))],
-    endpoint,
-  );
+  const entrypoint = new DevnetEntrypoint({ url: CONFIG.API_URL });
+  const factory = entrypoint.createSmartContractTransactionsFactory(abi);
 
   const tx = await factory.createTransactionForExecute(senderAddr, {
     contract: registry,
     function: 'submit_feedback',
-    arguments: typedArgs,
+    arguments: [Buffer.from(jobId), BigInt(agentNonce), BigInt(rating)],
     gasLimit: 10_000_000n,
   });
 
