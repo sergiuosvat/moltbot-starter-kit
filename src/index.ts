@@ -9,19 +9,22 @@ import {Validator} from './validator';
 import {JobProcessor} from './processor';
 import {JobHandler} from './job_handler';
 import {CONFIG} from './config';
+import {Logger} from './utils/logger';
+
+const logger = new Logger('Main');
 
 dotenv.config();
 
 async function main() {
-  console.log('Starting Moltbot...');
+  logger.info('Starting Moltbot...');
 
   // Load Config
   try {
     const configPath = path.resolve('config.json');
     const config = JSON.parse(await fs.readFile(configPath, 'utf8'));
-    console.log(`Loaded Agent: ${config.agentName} (ID: ${config.nonce})`);
+    logger.info(`Loaded Agent: ${config.agentName} (ID: ${config.nonce})`);
   } catch {
-    console.warn('Config not found or invalid.');
+    logger.warn('Config not found or invalid.');
   }
 
   // Initialize Bridges
@@ -39,7 +42,7 @@ async function main() {
     const signer = UserSigner.fromPem(walletContent);
     const myAddress = signer.getAddress().bech32();
 
-    console.log(
+    logger.info(
       `Fetching Relayer Address for ${myAddress} from ${CONFIG.PROVIDERS.RELAYER_URL}...`,
     );
     const relayerResp = await axios.get(
@@ -49,22 +52,22 @@ async function main() {
     const relayerAddress = relayerResp.data?.relayerAddress;
 
     if (relayerAddress) {
-      console.log(`Using Relayer: ${relayerAddress}`);
+      logger.info(`Using Relayer: ${relayerAddress}`);
       validator.setRelayerConfig(CONFIG.PROVIDERS.RELAYER_URL, relayerAddress);
     } else {
-      console.warn(
+      logger.warn(
         'No relayer address returned, falling back to direct transactions.',
       );
     }
   } catch (e) {
-    console.warn(
+    logger.warn(
       `Failed to init relayer: ${(e as Error).message}. Using direct transactions.`,
     );
   }
 
   // Start Listener
   facilitator.onPayment(async payment => {
-    console.log(
+    logger.info(
       `[Job] Payment Received! Amount: ${payment.amount} ${payment.token}`,
     );
 
@@ -75,7 +78,7 @@ async function main() {
   });
 
   await facilitator.start();
-  console.log('Listening for x402 payments...');
+  logger.info('Listening for x402 payments...');
 }
 
-main().catch(console.error);
+main().catch(err => logger.error('Fatal error in main loop', err));

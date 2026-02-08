@@ -1,4 +1,5 @@
 import {createHash} from 'crypto';
+import {Logger} from './utils/logger';
 
 export interface Challenge {
   address: string;
@@ -9,8 +10,10 @@ export interface Challenge {
 }
 
 export class PoWSolver {
+  private logger = new Logger('PoWSolver');
+
   solve(challenge: Challenge): string {
-    console.log(`Solving challenge (Diff: ${challenge.difficulty})...`);
+    this.logger.info(`Solving challenge (Diff: ${challenge.difficulty})...`);
     const start = Date.now();
     let nonce = 0;
 
@@ -20,7 +23,9 @@ export class PoWSolver {
       const hash = createHash('sha256').update(data).digest();
 
       if (this.checkDifficulty(hash, challenge.difficulty)) {
-        console.log(`Solved in ${Date.now() - start}ms. Nonce: ${nonceStr}`);
+        this.logger.info(
+          `Solved in ${Date.now() - start}ms. Nonce: ${nonceStr}`,
+        );
         return nonceStr;
       }
 

@@ -1,6 +1,7 @@
 import axios from 'axios';
 import * as crypto from 'crypto';
 import {CONFIG} from './config';
+import {Logger} from './utils/logger';
 
 export interface JobRequest {
   payload: string;
@@ -8,6 +9,8 @@ export interface JobRequest {
 }
 
 export class JobProcessor {
+  private logger = new Logger('JobProcessor');
+
   async process(job: JobRequest): Promise<string> {
     let content = job.payload;
 
@@ -24,7 +27,7 @@ export class JobProcessor {
       }
 
       try {
-        console.log(`Fetching job data from ${job.payload}...`);
+        this.logger.info(`Fetching job data from ${job.payload}...`);
         const res = await axios.get(job.payload, {
           timeout: CONFIG.REQUEST_TIMEOUT,
         });
@@ -34,7 +37,7 @@ export class JobProcessor {
         // Propagate error if it's the domain check, otherwise logging warning approach for availability
         if ((e as Error).message.includes('Domain not allowed')) throw e;
 
-        console.warn('Failed to fetch URL, using raw payload');
+        this.logger.warn('Failed to fetch URL, using raw payload');
       }
     }
 

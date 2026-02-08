@@ -12,8 +12,10 @@ import * as path from 'path';
 import {CONFIG} from './config';
 import * as identityAbiJson from './abis/identity-registry.abi.json';
 import * as validationAbiJson from './abis/validation-registry.abi.json';
+import {Logger} from './utils/logger';
 
 export class Validator {
+  private logger = new Logger('Validator');
   private relayerUrl: string | null = null;
   private relayerAddress: string | null = null;
   private txComputer = new TransactionComputer();
@@ -23,7 +25,7 @@ export class Validator {
     this.relayerAddress = address;
   }
   async submitProof(jobId: string, resultHash: string): Promise<string> {
-    console.log(`Submitting proof for ${jobId}:hash=${resultHash}`);
+    this.logger.info(`Submitting proof for ${jobId}:hash=${resultHash}`);
 
     // 1. Setup Provider & Signer
     const provider = new ApiNetworkProvider(CONFIG.API_URL, {
@@ -62,7 +64,7 @@ export class Validator {
 
     // 4. Relayer or Direct?
     if (this.relayerUrl && this.relayerAddress) {
-      console.log('Using Gasless Relayer V3...');
+      this.logger.info('Using Gasless Relayer V3...');
       tx.relayer = new Address(this.relayerAddress);
       tx.version = 2;
       tx.gasLimit = BigInt(tx.gasLimit.toString()) + 50000n; // Add gas for relaying
@@ -82,7 +84,7 @@ export class Validator {
 
         if (this.relayerUrl && this.relayerAddress) {
           // Send to Relayer
-          console.log(`Sending to Relayer Service: ${this.relayerUrl}`);
+          this.logger.info(`Sending to Relayer Service: ${this.relayerUrl}`);
           const relayRes = await axios.post(
             `${this.relayerUrl}/relay`,
             {transaction: tx.toPlainObject()},
@@ -97,7 +99,7 @@ export class Validator {
           );
         }
 
-        console.log(`Transaction sent: ${txHash}`);
+        this.logger.info(`Transaction sent: ${txHash}`);
         return txHash;
       } catch (e: unknown) {
         const err = e as {
@@ -109,16 +111,18 @@ export class Validator {
 
         // Auto-Registration on 403
         if (status === 403 && msg?.includes('register')) {
-          console.warn('Agent not registered. Initiating Auto-Registration...');
+          this.logger.warn(
+            'Agent not registered. Initiating Auto-Registration...',
+          );
           try {
             await this.registerAgent();
-            console.log(
+            this.logger.info(
               'Registration successful. Retrying proof submission...',
             );
             attempts--; // Don't count registration as a failed attempt
             continue;
           } catch (regError) {
-            console.error(
+            this.logger.error(
               'Auto-Registration failed:',
               (regError as Error).message,
             );
@@ -127,7 +131,7 @@ export class Validator {
         }
 
         attempts++;
-        console.warn(`Tx Broadcast Attempt ${attempts} failed: ${msg}`);
+        this.logger.warn(`Tx Broadcast Attempt ${attempts} failed: ${msg}`);
         if (attempts >= maxAttempts) throw e;
         await new Promise(r => setTimeout(r, 1000 * attempts)); // Backoff
       }
@@ -189,13 +193,13 @@ export class Validator {
     tx.relayer = new Address(this.relayerAddress);
 
     // 4. Relay with Nonce
-    console.log('Relaying Registration Transaction...');
+    this.logger.info('Relaying Registration Transaction...');
     const relayRes = await axios.post(`${this.relayerUrl}/relay`, {
       transaction: tx.toPlainObject(),
       challengeNonce: nonce,
     });
 
-    console.log('Registration Tx Sent:', relayRes.data.txHash);
+    this.logger.info(`Registration Tx Sent: ${relayRes.data.txHash}`);
 
     // Wait for it? Optional. Relayer auth check is on-chain or challenge.
     // If we want "isAuthorized" to pass via on-chain check, we must wait.
@@ -205,7 +209,7 @@ export class Validator {
     // the agent MUST BE ON-CHAIN.
     // So we MUST wait for registration to process.
 
-    console.log('Waiting for registration to be confirmed...');
+    this.logger.info('Waiting for registration to be confirmed...');
     await this.waitForTx(relayRes.data.txHash);
   }
 
@@ -239,7 +243,7 @@ export class Validator {
       if (err.response?.status === 404 || err.message?.includes('404')) {
         return 'not_found';
       }
-      console.warn(
+      this.logger.warn(
         `Failed to fetch status for ${txHash}: ${(e as Error).message}`,
       );
       return 'unknown';

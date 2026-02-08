@@ -8,7 +8,7 @@ const axios_1 = __importDefault(require("axios"));
 jest.mock('axios');
 jest.mock('@multiversx/sdk-core', () => {
     return {
-        Address: jest.fn().mockImplementation((bech32) => ({
+        Address: jest.fn().mockImplementation(bech32 => ({
             bech32: () => bech32 || 'erd1test',
             toBech32: () => bech32 || 'erd1test',
             getPublicKey: () => Buffer.from('pubkey'),

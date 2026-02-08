@@ -11,12 +11,15 @@ import {CONFIG} from './config';
 import {Facilitator} from './facilitator';
 import * as fs from 'fs';
 import * as path from 'path';
+import {Logger} from './utils/logger';
+
+const logger = new Logger('HiringScript');
 
 async function runEmployerFlow() {
-  console.log('--- Starting Employer Hiring Flow ---');
+  logger.info('--- Starting Employer Hiring Flow ---');
 
   if (!CONFIG.EMPLOYER.PEM_PATH || !CONFIG.EMPLOYER.ADDRESS) {
-    console.error('Employer PEM_PATH or ADDRESS not configured in .env');
+    logger.error('Employer PEM_PATH or ADDRESS not configured in .env');
     process.exit(1);
   }
 
@@ -30,7 +33,7 @@ async function runEmployerFlow() {
   const agentNonce = 1;
   const serviceId = 'inference';
 
-  console.log(
+  logger.info(
     `Preparing job for Agent ${agentNonce}, service: ${serviceId}...`,
   );
   const preparation = await facilitator.prepare({
@@ -39,10 +42,9 @@ async function runEmployerFlow() {
     employerAddress: employerAddr,
   });
 
-  console.log('Preparation received:', {
+  logger.info('Preparation received:', {
     jobId: preparation.jobId,
     amount: preparation.amount,
-    receiver: preparation.receiver,
   });
 
   // Setup Provider
@@ -50,11 +52,11 @@ async function runEmployerFlow() {
 
   const performSettlement = async (attempt: number): Promise<string> => {
     try {
-      console.log(`\n--- Settlement Attempt ${attempt} ---`);
+      logger.info(`--- Settlement Attempt ${attempt} ---`);
 
       // 1. Fetch Fresh Nonce
       const account = await provider.getAccount({bech32: () => employerAddr});
-      console.log(`Fetched Sender Nonce: ${account.nonce}`);
+      logger.info(`Fetched Sender Nonce: ${account.nonce}`);
 
       // 2. Construct Transaction
       const tx = new Transaction({
@@ -73,7 +75,7 @@ async function runEmployerFlow() {
       const signature = await signer.sign(bytesToSign);
 
       // 3. Settle Job
-      console.log('Sending signed transaction to Facilitator...');
+      logger.info('Sending signed transaction to Facilitator...');
       const settlementPayload = {
         nonce: Number(tx.nonce),
         value: tx.value.toString(),
@@ -89,7 +91,7 @@ async function runEmployerFlow() {
       };
 
       const result = await facilitator.settle(settlementPayload);
-      console.log(`Settlement Broadcasted. TxHash: ${result.txHash}`);
+      logger.info(`Settlement Broadcasted. TxHash: ${result.txHash}`);
 
       // 4. Monitor Protocol
       return await monitorTx(result.txHash);
@@ -107,7 +109,7 @@ async function runEmployerFlow() {
       try {
         const tx = await provider.getTransaction(txHash);
         const status = tx.status.toString().toLowerCase(); // sdk-core v13+ might return object
-        console.log(`Monitoring ${txHash}: ${status}`);
+        logger.info(`Monitoring ${txHash}: ${status}`);
 
         if (status === 'success' || status === 'successful') return txHash;
         if (status === 'fail' || status === 'failed' || status === 'invalid')
@@ -117,7 +119,7 @@ async function runEmployerFlow() {
         if (message.includes('404')) {
           // pending propagation
         } else {
-          console.warn(`Monitor error: ${message}`);
+          logger.warn(`Monitor error: ${message}`);
         }
       }
       await new Promise(r => setTimeout(r, 5000));
@@ -132,31 +134,31 @@ async function runEmployerFlow() {
   while (attempts <= 3) {
     try {
       const finalHash = await performSettlement(attempts);
-      console.log('\nSUCCESS: Job Initialized and Confirmed!');
-      console.log(`TxHash: ${finalHash}`);
-      console.log(`JobId: ${preparation.jobId}`);
+      logger.info('SUCCESS: Job Initialized and Confirmed!');
+      logger.info(`TxHash: ${finalHash}`);
+      logger.info(`JobId: ${preparation.jobId}`);
       settledJobId = preparation.jobId;
       break;
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
-      console.warn(message);
-      console.warn('Retrying in 5s...');
+      logger.warn(message);
+      logger.warn('Retrying in 5s...');
       await new Promise(r => setTimeout(r, 5000));
       attempts++;
     }
   }
 
   if (!settledJobId) {
-    console.error('Failed to settle job after 3 attempts.');
+    logger.error('Failed to settle job after 3 attempts.');
     process.exit(1);
   }
 
   // 5. Wait for Verification (Worker to submit proof)
-  console.log('\n--- Waiting for Job Verification ---');
+  logger.info('--- Waiting for Job Verification ---');
   await waitForJobVerification(settledJobId);
 
   // 6. Submit Reputation
-  console.log('\n--- Submitting Reputation Feedback ---');
+  logger.info('--- Submitting Reputation Feedback ---');
   await submitReputation(settledJobId, 5, provider, signer, employerAddr); // Rating 5/5
 }
 
@@ -182,12 +184,12 @@ async function waitForJobVerification(jobId: string) {
       });
 
       if (results[0] === true) {
-        console.log('\nJob Verification Confirmed!');
+        logger.info('Job Verification Confirmed!');
         return;
       }
     } catch (e: unknown) {
       // Ignore temporary query failures
-      console.warn('Query failed:', (e as Error).message);
+      logger.warn('Query failed:', (e as Error).message);
     }
     await new Promise(r => setTimeout(r, 5000));
   }
@@ -229,14 +231,14 @@ async function submitReputation(
   const computer = new TransactionComputer();
   tx.signature = await signer.sign(computer.computeBytesForSigning(tx));
 
-  console.log('Broadcasting feedback tx...');
+  logger.info('Broadcasting feedback tx...');
   const txHash = await provider.sendTransaction(tx);
-  console.log(`Feedback Tx: ${txHash}`);
+  logger.info(`Feedback Tx: ${txHash}`);
 }
 
 if (require.main === module) {
   runEmployerFlow().catch(err => {
-    console.error('Hiring flow failed:', err.message);
+    logger.error('Hiring flow failed:', err.message);
     process.exit(1);
   });
 }

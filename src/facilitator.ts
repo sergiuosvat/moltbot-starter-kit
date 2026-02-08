@@ -1,5 +1,6 @@
 import axios from 'axios';
 import {CONFIG} from './config';
+import {Logger} from './utils/logger';
 
 export interface PaymentEvent {
   amount: string;
@@ -17,6 +18,7 @@ export class Facilitator {
   private listener: PaymentCallback | null = null;
   private pollingInterval: NodeJS.Timeout | null = null;
   private facilitatorUrl: string;
+  private logger = new Logger('Facilitator');
 
   constructor(url?: string) {
     this.facilitatorUrl = url || CONFIG.PROVIDERS.FACILITATOR_URL;
@@ -27,7 +29,7 @@ export class Facilitator {
   }
 
   async start() {
-    console.log(`Facilitator Listener attached to ${this.facilitatorUrl}`);
+    this.logger.info(`Listener attached to ${this.facilitatorUrl}`);
 
     this.pollingInterval = setInterval(async () => {
       if (!this.listener) return;
@@ -44,7 +46,7 @@ export class Facilitator {
         }
       } catch {
         // Suppress connection error logs during tests often, but log warn in prod
-        // console.warn("Facilitator poll failed:", (e as Error).message);
+        // this.logger.warn("Facilitator poll failed:", (e as Error).message);
       }
     }, 5000);
   }
