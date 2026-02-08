@@ -6,9 +6,9 @@ import {
   Abi,
   DevnetEntrypoint,
 } from '@multiversx/sdk-core';
-import { ApiNetworkProvider } from '@multiversx/sdk-network-providers';
-import { CONFIG } from './config';
-import { Facilitator } from './facilitator';
+import {ApiNetworkProvider} from '@multiversx/sdk-network-providers';
+import {CONFIG} from './config';
+import {Facilitator} from './facilitator';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -53,7 +53,7 @@ async function runEmployerFlow() {
       console.log(`\n--- Settlement Attempt ${attempt} ---`);
 
       // 1. Fetch Fresh Nonce
-      const account = await provider.getAccount({ bech32: () => employerAddr });
+      const account = await provider.getAccount({bech32: () => employerAddr});
       console.log(`Fetched Sender Nonce: ${account.nonce}`);
 
       // 2. Construct Transaction
@@ -168,7 +168,7 @@ async function waitForJobVerification(jobId: string) {
     __dirname,
     '../src/abis/validation-registry.abi.json',
   );
-  const entrypoint = new DevnetEntrypoint({ url: CONFIG.API_URL });
+  const entrypoint = new DevnetEntrypoint({url: CONFIG.API_URL});
   const abi = Abi.create(JSON.parse(fs.readFileSync(abiPath, 'utf8')));
   const controller = entrypoint.createSmartContractController(abi);
 
@@ -213,9 +213,9 @@ async function submitReputation(
   );
   const abi = Abi.create(JSON.parse(fs.readFileSync(abiPath, 'utf8')));
 
-  const account = await provider.getAccount({ bech32: () => sender });
+  const account = await provider.getAccount({bech32: () => sender});
 
-  const entrypoint = new DevnetEntrypoint({ url: CONFIG.API_URL });
+  const entrypoint = new DevnetEntrypoint({url: CONFIG.API_URL});
   const factory = entrypoint.createSmartContractTransactionsFactory(abi);
 
   const tx = await factory.createTransactionForExecute(senderAddr, {

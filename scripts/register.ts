@@ -1,6 +1,9 @@
 import {UserSigner} from '@multiversx/sdk-wallet';
+import {
+  ApiNetworkProvider,
+  ProxyNetworkProvider,
+} from '@multiversx/sdk-network-providers';
 import {Transaction, Address, TransactionComputer} from '@multiversx/sdk-core';
-import {ApiNetworkProvider} from '@multiversx/sdk-network-providers';
 import {promises as fs} from 'fs';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
@@ -69,7 +72,17 @@ async function main() {
   console.log('🚀 Starting Agent Registration...');
 
   // 1. Setup Provider & Signer
-  const provider = new ApiNetworkProvider(CONFIG.API_URL);
+  // Use ProxyProvider if Localhost (Chain Sim)
+  const isLocal =
+    CONFIG.API_URL.includes('localhost') ||
+    CONFIG.API_URL.includes('127.0.0.1');
+  const provider = isLocal
+    ? new ProxyNetworkProvider(CONFIG.API_URL)
+    : new ApiNetworkProvider(CONFIG.API_URL);
+
+  console.log(
+    `Using Provider: ${isLocal ? 'ProxyNetworkProvider' : 'ApiNetworkProvider'} (${CONFIG.API_URL})`,
+  );
 
   const pemPath =
     process.env.MULTIVERSX_PRIVATE_KEY || path.resolve('wallet.pem');
@@ -128,7 +141,12 @@ async function main() {
     // is encoded as a sequence of (key, value) pairs
     for (const entry of config.metadata) {
       const keyHex = Buffer.from(entry.key).toString('hex');
-      const valueHex = Buffer.from(entry.value).toString('hex');
+      let valueHex;
+      if (entry.value.startsWith('0x')) {
+        valueHex = entry.value.substring(2);
+      } else {
+        valueHex = Buffer.from(entry.value).toString('hex');
+      }
       metadataHex += `@${keyHex}@${valueHex}`;
     }
   }
