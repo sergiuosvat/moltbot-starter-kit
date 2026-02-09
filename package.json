@@ -9,6 +9,7 @@
     "start": "node dist/index.js",
     "register": "ts-node scripts/register.ts",
     "test": "jest",
+    "test:coverage": "jest --coverage",
     "lint": "gts lint",
     "clean": "gts clean",
     "compile": "tsc",
