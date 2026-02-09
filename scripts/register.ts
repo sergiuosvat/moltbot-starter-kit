@@ -1,4 +1,4 @@
-import {UserSigner} from '@multiversx/sdk-wallet';
+import { UserSigner } from '@multiversx/sdk-wallet';
 import {
   ApiNetworkProvider,
   ProxyNetworkProvider,
@@ -13,14 +13,17 @@ import {
   Struct,
   BytesValue,
   Field,
+  StructType,
+  FieldDefinition,
+  BytesType,
 } from '@multiversx/sdk-core';
-import {promises as fs} from 'fs';
+import { promises as fs } from 'fs';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 import axios from 'axios';
-import {createHash} from 'crypto';
-import {CONFIG} from '../src/config';
-import {RelayerAddressCache} from '../src/utils/RelayerAddressCache';
+import { createHash } from 'crypto';
+import { CONFIG } from '../src/config';
+import { RelayerAddressCache } from '../src/utils/RelayerAddressCache';
 
 dotenv.config();
 
@@ -108,7 +111,7 @@ async function main() {
     pricing: string;
     capabilities: string[];
     manifestUri: string;
-    metadata: Array<{key: string; value: string}>;
+    metadata: Array<{ key: string; value: string }>;
   } = {
     agentName: 'Moltbot',
     nonce: 0,
@@ -149,7 +152,7 @@ async function main() {
   const publicKeyHex = senderAddress.toHex();
 
   // Prepare metadata args: each entry is {key: Buffer, value: Buffer}
-  const metadataArgs: Array<{key: Buffer; value: Buffer}> = [];
+  const metadataArgs: Array<{ key: Buffer; value: Buffer }> = [];
   if (config.metadata && config.metadata.length > 0) {
     for (const entry of config.metadata) {
       const keyBuf = Buffer.from(entry.key);
@@ -159,7 +162,7 @@ async function main() {
       } else {
         valueBuf = Buffer.from(entry.value);
       }
-      metadataArgs.push({key: keyBuf, value: valueBuf});
+      metadataArgs.push({ key: keyBuf, value: valueBuf });
     }
   }
 
@@ -169,12 +172,13 @@ async function main() {
   if (config.metadata?.length > 0)
     console.log(`Metadata: ${config.metadata.length} entries`);
 
-  // Use factory to build the transaction with correct ABI encoding
-  // Arguments match: register_agent(name: bytes, uri: bytes, public_key: bytes, metadata: counted-variadic<MetadataEntry>, services: counted-variadic<ServiceConfigInput>)
+  // Construct the MetadataEntry StructType manually (avoids relying on abi.registry).
+  // MetadataEntry { key: bytes, value: bytes }
+  const metadataType = new StructType('MetadataEntry', [
+    new FieldDefinition('key', '', new BytesType()),
+    new FieldDefinition('value', '', new BytesType()),
+  ]);
 
-  // We must explicitly construct TypedValues for Counted Variadic arguments
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const metadataType = (abi as any).registry.getStruct('MetadataEntry');
   const metadataTyped = metadataArgs.map(
     m =>
       new Struct(metadataType, [
@@ -188,7 +192,7 @@ async function main() {
     Buffer.from(agentUri),
     Buffer.from(publicKeyHex, 'hex'),
     VariadicValue.fromItemsCounted(...metadataTyped),
-    VariadicValue.fromItemsCounted(), // services
+    VariadicValue.fromItemsCounted(), // services (empty)
   ];
 
   const tx = await factory.createTransactionForExecute(senderAddress, {
@@ -213,7 +217,7 @@ async function main() {
     console.log('Empty wallet detected. Using Relayer fallback...');
     try {
       // A. Get Challenge
-      const {data: challenge} = await axios.post(
+      const { data: challenge } = await axios.post(
         `${CONFIG.PROVIDERS.RELAYER_URL}/challenge`,
         {
           address: senderAddress.toBech32(),
@@ -231,7 +235,7 @@ async function main() {
       if (!relayerAddressBech32) {
         console.log('Fetching Relayer Address for Shard...');
         try {
-          const {data} = await axios.get(
+          const { data } = await axios.get(
             `${CONFIG.PROVIDERS.RELAYER_URL}/relayer/address/${senderAddress.toBech32()}`,
           );
           relayerAddressBech32 = data.relayerAddress;
@@ -265,7 +269,7 @@ async function main() {
 
       // C. Relay
       console.log('Broadcasting via Relayer...');
-      const {data: relayResult} = await axios.post(
+      const { data: relayResult } = await axios.post(
         `${CONFIG.PROVIDERS.RELAYER_URL}/relay`,
         {
           transaction: tx.toPlainObject(),
@@ -278,7 +282,7 @@ async function main() {
         `Check Explorer: ${CONFIG.EXPLORER_URL}/transactions/${relayResult.txHash}`,
       );
     } catch (e: unknown) {
-      const err = e as {response?: {data?: {error?: string}}; message?: string};
+      const err = e as { response?: { data?: { error?: string } }; message?: string };
       console.error(
         'Relaying failed:',
         err.response?.data?.error || err.message,

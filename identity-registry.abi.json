@@ -446,7 +446,7 @@
             "fields": [
                 {
                     "name": "token_identifier",
-                    "type": "TokenId"
+                    "type": "TokenIdentifier"
                 },
                 {
                     "name": "token_nonce",
@@ -454,7 +454,7 @@
                 },
                 {
                     "name": "amount",
-                    "type": "NonZeroBigUint"
+                    "type": "BigUint"
                 }
             ]
         },
@@ -471,7 +471,7 @@
                 },
                 {
                     "name": "token",
-                    "type": "TokenId"
+                    "type": "TokenIdentifier"
                 },
                 {
                     "name": "nonce",
