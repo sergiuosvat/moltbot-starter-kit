@@ -59,6 +59,42 @@
     "erd1hafykh7jhz7jvc8a45qu48e0de4yw6rasqe3p2qhl9yj9cm86uesk4j2zh": {
       "relayerAddress": "erd162ws7zwj0xnw4u2w3vh4v27cx3ru0568hvmxdz7vakd9c86y9m8sazh4gk",
       "timestamp": 1770592802669
+    },
+    "erd1ayeuhqz3sce69uw56stfdsuas7yamt4fcuzperdskln5jtfhpppq7ha92j": {
+      "relayerAddress": "erd1cggpwdrdn6lnh6ul8ga33fcgyv7c3vcrstfessa4qkjwwar5t29qsncfje",
+      "timestamp": 1770624086611
+    },
+    "erd1mefdxx0hwffll46tw6avmt0x6wr59aqw72x4lcj9379xr5se5jnq9wx6ps": {
+      "relayerAddress": "erd1vteh6jjxhqltnrtlpyfyzwntc6q0pj7sxc5wyfzd7txw500h47nqsgkjae",
+      "timestamp": 1770624100709
+    },
+    "erd1mtaza429zeqh8ujefm8mw9avg9jctf99ch0cph2p8zrzrhl7ex3spx4v3k": {
+      "relayerAddress": "erd1y00cgzw54jxf9huvfvk0fkep0uns86hfldxccpvhjx97jspt0ntsza7uc8",
+      "timestamp": 1770624767790
+    },
+    "erd13cwn7mewd34yzxfruwxptt8k43zkcdctyqe9xl8t2368pq97xdlqreclx2": {
+      "relayerAddress": "erd1ql3m3srhn9ezky9c52j9sah6swkf7n79klm5akh00eql6hn6c7fqm03sft",
+      "timestamp": 1770625014322
+    },
+    "erd1j7pkqj6ue8qp9d94jlmy5s9ft0sw4gca5ugqfg88g0pseder8jyqrzlhgh": {
+      "relayerAddress": "erd1ega3kg53ulwlpafhqzhhxd0le95mml4ep59pdxap0rw7z2xk6r6q08nmj2",
+      "timestamp": 1770625033368
+    },
+    "erd10ldluuyn6d7u8z2s42ujqfk7d268ky3egxxn3gr80rurkftf5rdqgnnywe": {
+      "relayerAddress": "erd1n6x7eyhxyz9pg8a7mu7k443af4sgpqpzr8u73wxu5rglelwymaeq8pluff",
+      "timestamp": 1770625710913
+    },
+    "erd135as6r4qyrp6gdyg88gvcshqcsnqn8ne588qnhg4mvl5s5t4l7dq6l0e72": {
+      "relayerAddress": "erd1zxmjfwqxh0et32w0qq05e2ryx88fy8raxmxad8vlxaqsw6atntnq8mhcej",
+      "timestamp": 1770625745873
+    },
+    "erd1fkuvxzupyu8fql4z947w7p3737ezafsdfx5t7ucjgjukle94wltqptv3em": {
+      "relayerAddress": "erd1235y28j3d8kycgsl5xextvekzmedyrzfl3q7mgrw9q246gl5fpmqdvcdlz",
+      "timestamp": 1770625928696
+    },
+    "erd10meyhunfv7ms59x4mwa8tm6nax9ued9e3mut9vrxl87ytmr0mq7qd9nqft": {
+      "relayerAddress": "erd177ca7jh8t0gzk4ljjwp8y7uy9dvhsdngnwg2mmeynqz9tk66p5yq3vsyyv",
+      "timestamp": 1770626131199
     }
   }
 }

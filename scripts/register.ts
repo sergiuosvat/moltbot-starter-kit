@@ -3,7 +3,13 @@ import {
   ApiNetworkProvider,
   ProxyNetworkProvider,
 } from '@multiversx/sdk-network-providers';
-import {Transaction, Address, TransactionComputer} from '@multiversx/sdk-core';
+import {
+  Address,
+  TransactionComputer,
+  SmartContractTransactionsFactory,
+  TransactionsFactoryConfig,
+  Abi,
+} from '@multiversx/sdk-core';
 import {promises as fs} from 'fs';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
@@ -114,40 +120,42 @@ async function main() {
   }
   console.log(`Registering Agent: ${config.agentName}...`);
 
-  // 3. Construct Transaction with ALL 3 required arguments
+  // 3. Load ABI and construct transaction using SmartContractTransactionsFactory
   const registryAddress = CONFIG.ADDRESSES.IDENTITY_REGISTRY;
   const account = await provider.getAccount({
     bech32: () => senderAddress.toBech32(),
   });
 
-  // Argument 1: Agent Name (required)
-  const nameHex = Buffer.from(config.agentName).toString('hex');
+  // Load the identity-registry ABI for proper argument encoding
+  const abiPath = path.resolve(__dirname, '..', 'identity-registry.abi.json');
+  const abiJson = JSON.parse(await fs.readFile(abiPath, 'utf8'));
+  const abi = Abi.create(abiJson);
 
-  // Argument 2: Agent URI - points to manifest/ARF JSON (can be updated later)
-  // Default to empty or config value, agent can set real URI via update_agent later
+  const factoryConfig = new TransactionsFactoryConfig({
+    chainID: CONFIG.CHAIN_ID,
+  });
+  const factory = new SmartContractTransactionsFactory({
+    config: factoryConfig,
+    abi,
+  });
+
+  // Build metadata entries matching the ABI's MetadataEntry struct
   const agentUri =
     config.manifestUri || `https://agent.molt.bot/${config.agentName}`;
-  const uriHex = Buffer.from(agentUri).toString('hex');
-
-  // Argument 3: Public Key - for signature verification and secure communication
-  // Derive from the signer's public key (hex encoded)
   const publicKeyHex = senderAddress.toHex();
 
-  // Argument 4: Metadata (optional) - EIP-8004 compatible key-value pairs
-  // Format: register_agent@<nameHex>@<uriHex>@<publicKeyHex>[@<metadataLength>@<key1Hex>@<value1Hex>...]
-  let metadataHex = '';
+  // Prepare metadata args: each entry is {key: Buffer, value: Buffer}
+  const metadataArgs: Array<{key: Buffer; value: Buffer}> = [];
   if (config.metadata && config.metadata.length > 0) {
-    // MultiValueEncoded ManagedVec<MetadataEntry> in VM:
-    // is encoded as a sequence of (key, value) pairs
     for (const entry of config.metadata) {
-      const keyHex = Buffer.from(entry.key).toString('hex');
-      let valueHex;
+      const keyBuf = Buffer.from(entry.key);
+      let valueBuf: Buffer;
       if (entry.value.startsWith('0x')) {
-        valueHex = entry.value.substring(2);
+        valueBuf = Buffer.from(entry.value.substring(2), 'hex');
       } else {
-        valueHex = Buffer.from(entry.value).toString('hex');
+        valueBuf = Buffer.from(entry.value);
       }
-      metadataHex += `@${keyHex}@${valueHex}`;
+      metadataArgs.push({key: keyBuf, value: valueBuf});
     }
   }
 
@@ -157,22 +165,31 @@ async function main() {
   if (config.metadata?.length > 0)
     console.log(`Metadata: ${config.metadata.length} entries`);
 
-  // Format: register_agent@<nameHex>@<uriHex>@<publicKeyHex>[@<key1Hex>@<value1Hex>...]
-  const data = Buffer.from(
-    `register_agent@${nameHex}@${uriHex}@${publicKeyHex}${metadataHex}`,
-  );
+  // Use factory to build the transaction with correct ABI encoding
+  // Arguments match: register_agent(name: bytes, uri: bytes, public_key: bytes, metadata: optional<List<MetadataEntry>>)
+  const scArgs =
+    metadataArgs.length > 0
+      ? [
+          Buffer.from(config.agentName),
+          Buffer.from(agentUri),
+          Buffer.from(publicKeyHex, 'hex'),
+          metadataArgs,
+        ]
+      : [
+          Buffer.from(config.agentName),
+          Buffer.from(agentUri),
+          Buffer.from(publicKeyHex, 'hex'),
+        ];
 
-  const tx = new Transaction({
-    nonce: BigInt(account.nonce),
-    value: 0n,
-    receiver: new Address(registryAddress),
+  const tx = await factory.createTransactionForExecute(senderAddress, {
+    contract: new Address(registryAddress),
+    function: 'register_agent',
+    arguments: scArgs,
     gasLimit: BigInt(CONFIG.GAS_LIMITS.REGISTER),
-    chainID: CONFIG.CHAIN_ID,
-    data: data,
-    sender: senderAddress,
   });
 
-  // Sign the transaction (always required, even for relaying)
+  tx.nonce = BigInt(account.nonce);
+
   // Sign the transaction (always required, even for relaying)
   const serialized = txComputer.computeBytesForSigning(tx);
   const signature = await signer.sign(serialized);

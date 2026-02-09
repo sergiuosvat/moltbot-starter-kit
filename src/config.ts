@@ -39,6 +39,16 @@ export const CONFIG = {
     REGISTER: 10_000_000n,
     UPDATE: 10_000_000n,
     SUBMIT_PROOF: 10_000_000n,
+    REGISTER_AGENT: BigInt(process.env.GAS_LIMIT_REGISTER_AGENT || '6000000'),
+  },
+
+  // Relayer Settings
+  RELAYER_GAS_OVERHEAD: BigInt(process.env.RELAYER_GAS_OVERHEAD || '50000'),
+
+  // Agent Identity (used during auto-registration)
+  AGENT: {
+    NAME: process.env.AGENT_NAME || 'moltbot',
+    URI: process.env.AGENT_URI || 'https://moltbot.io',
   },
 
   // Security Logic

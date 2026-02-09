@@ -13,6 +13,7 @@ import {CONFIG} from './config';
 import * as identityAbiJson from './abis/identity-registry.abi.json';
 import * as validationAbiJson from './abis/validation-registry.abi.json';
 import {Logger} from './utils/logger';
+import {PoWSolver} from './pow';
 
 export class Validator {
   private logger = new Logger('Validator');
@@ -67,7 +68,8 @@ export class Validator {
       this.logger.info('Using Gasless Relayer V3...');
       tx.relayer = new Address(this.relayerAddress);
       tx.version = 2;
-      tx.gasLimit = BigInt(tx.gasLimit.toString()) + 50000n; // Add gas for relaying
+      tx.gasLimit =
+        BigInt(tx.gasLimit.toString()) + CONFIG.RELAYER_GAS_OVERHEAD;
     }
 
     // 5. Sign
@@ -144,7 +146,7 @@ export class Validator {
       throw new Error('Relayer not configured. Cannot register.');
     }
 
-    console.log('Fetching PoW Challenge...');
+    this.logger.info('Fetching PoW Challenge...');
     const pemPath =
       process.env.MULTIVERSX_PRIVATE_KEY || path.resolve('wallet.pem');
     const pemContent = await fs.readFile(pemPath, 'utf8');
@@ -158,7 +160,6 @@ export class Validator {
     const challenge = challengeRes.data;
 
     // 2. Solve
-    const {PoWSolver} = require('./pow');
     const solver = new PoWSolver();
     const nonce = solver.solve(challenge);
 
@@ -179,12 +180,12 @@ export class Validator {
     const tx = await factory.createTransactionForExecute(senderAddress, {
       contract: new Address(CONFIG.ADDRESSES.IDENTITY_REGISTRY),
       function: 'register_agent',
-      gasLimit: 6000000n,
+      gasLimit: CONFIG.GAS_LIMITS.REGISTER_AGENT,
       arguments: [
-        Buffer.from('moltbot'), // name
-        Buffer.from('https://moltbot.io'), // uri
-        Buffer.from(senderAddress.getPublicKey()), // public_key
-        [], // metadata (empty list)
+        Buffer.from(CONFIG.AGENT.NAME),
+        Buffer.from(CONFIG.AGENT.URI),
+        Buffer.from(senderAddress.getPublicKey()),
+        [],
       ],
     });
 

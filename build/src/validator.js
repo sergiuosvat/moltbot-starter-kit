@@ -47,6 +47,7 @@ const config_1 = require("./config");
 const identityAbiJson = __importStar(require("./abis/identity-registry.abi.json"));
 const validationAbiJson = __importStar(require("./abis/validation-registry.abi.json"));
 const logger_1 = require("./utils/logger");
+const pow_1 = require("./pow");
 class Validator {
     logger = new logger_1.Logger('Validator');
     relayerUrl = null;
@@ -86,7 +87,8 @@ class Validator {
             this.logger.info('Using Gasless Relayer V3...');
             tx.relayer = new sdk_core_1.Address(this.relayerAddress);
             tx.version = 2;
-            tx.gasLimit = BigInt(tx.gasLimit.toString()) + 50000n; // Add gas for relaying
+            tx.gasLimit =
+                BigInt(tx.gasLimit.toString()) + config_1.CONFIG.RELAYER_GAS_OVERHEAD;
         }
         // 5. Sign
         const serialized = this.txComputer.computeBytesForSigning(tx);
@@ -142,7 +144,7 @@ class Validator {
         if (!this.relayerUrl || !this.relayerAddress) {
             throw new Error('Relayer not configured. Cannot register.');
         }
-        console.log('Fetching PoW Challenge...');
+        this.logger.info('Fetching PoW Challenge...');
         const pemPath = process.env.MULTIVERSX_PRIVATE_KEY || path.resolve('wallet.pem');
         const pemContent = await fs_1.promises.readFile(pemPath, 'utf8');
         const signer = sdk_wallet_1.UserSigner.fromPem(pemContent);
@@ -153,8 +155,7 @@ class Validator {
         });
         const challenge = challengeRes.data;
         // 2. Solve
-        const { PoWSolver } = require('./pow');
-        const solver = new PoWSolver();
+        const solver = new pow_1.PoWSolver();
         const nonce = solver.solve(challenge);
         // 3. Create Registration Tx
         const provider = new sdk_network_providers_1.ApiNetworkProvider(config_1.CONFIG.API_URL, {
@@ -170,12 +171,12 @@ class Validator {
         const tx = await factory.createTransactionForExecute(senderAddress, {
             contract: new sdk_core_1.Address(config_1.CONFIG.ADDRESSES.IDENTITY_REGISTRY),
             function: 'register_agent',
-            gasLimit: 6000000n,
+            gasLimit: config_1.CONFIG.GAS_LIMITS.REGISTER_AGENT,
             arguments: [
-                Buffer.from('moltbot'), // name
-                Buffer.from('https://moltbot.io'), // uri
-                Buffer.from(senderAddress.getPublicKey()), // public_key
-                [], // metadata (empty list)
+                Buffer.from(config_1.CONFIG.AGENT.NAME),
+                Buffer.from(config_1.CONFIG.AGENT.URI),
+                Buffer.from(senderAddress.getPublicKey()),
+                [],
             ],
         });
         tx.nonce = BigInt(account.nonce);
