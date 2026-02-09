@@ -2,46 +2,50 @@ import {UserSigner} from '@multiversx/sdk-wallet';
 import {Transaction, Address, TransactionComputer} from '@multiversx/sdk-core';
 import {promises as fs} from 'fs';
 
-// Usage: ts-node sign_x402.ts <pemPath> <receiver> <value> <nonce> <chainID> [data]
+// Usage: ts-node sign_x402_relayed.ts <pemPath> <receiver> <value> <nonce> <chainID> <relayerAddress> [data]
+// Signs an x402 payment transaction with relayer field set (Relayed V3 compatible).
 
 async function main() {
   const args = process.argv.slice(2);
-  if (args.length < 5) {
+  if (args.length < 6) {
     console.error(
-      'Usage: sign_x402.ts <pemPath> <receiver> <value> <nonce> <chainID> [data]',
+      'Usage: sign_x402_relayed.ts <pemPath> <receiver> <value> <nonce> <chainID> <relayerAddress> [data]',
     );
     process.exit(1);
   }
 
-  const [pemPath, receiver, value, nonceStr, chainID, dataStr] = args;
+  const [pemPath, receiver, value, nonceStr, chainID, relayerAddress, dataStr] =
+    args;
 
   // 1. Load Signer
   const pemContent = await fs.readFile(pemPath, 'utf8');
   const signer = UserSigner.fromPem(pemContent);
   const sender = signer.getAddress();
 
-  // 2. Construct Transaction
-  // NOTE: Must match Settler.ts construction EXACTLY
+  // 2. Construct Transaction with relayer field (Relayed V3)
+  const RELAYED_V3_EXTRA_GAS = 50000n;
+  const BASE_GAS_LIMIT = 500000n;
+
   const tx = new Transaction({
     nonce: BigInt(nonceStr),
     value: BigInt(value),
     receiver: new Address(receiver),
     sender: new Address(sender.bech32()),
-    gasPrice: 1000000000n, // Facilitator uses default/inherited? Settler says: BigInt(payload.gasPrice)
-    gasLimit: 500000n, // Standard transfer
+    relayer: new Address(relayerAddress), // Must set BEFORE signing
+    gasPrice: 1000000000n,
+    gasLimit: BASE_GAS_LIMIT + RELAYED_V3_EXTRA_GAS,
     data: dataStr ? Buffer.from(dataStr) : undefined,
     chainID: chainID,
-    version: 2, // Must be >= 2 for Relayed V3 compatibility
+    version: 2, // Must be >= 2 for Relayed V3
   });
 
-  // 3. Sign
+  // 3. Sign (relayer field is part of signed bytes)
   const computer = new TransactionComputer();
   const serialized = computer.computeBytesForSigning(tx);
   const signature = await signer.sign(serialized);
   tx.signature = signature;
 
-  // 4. Output Payload
-  // X402Payload interface
+  // 4. Output Payload (compatible with x402 settle and /relay)
   const payload = {
     sender: sender.bech32(),
     receiver: receiver,
@@ -53,7 +57,8 @@ async function main() {
     version: 2,
     options: 0,
     gasPrice: 1000000000,
-    gasLimit: 500000,
+    gasLimit: Number(BASE_GAS_LIMIT + RELAYED_V3_EXTRA_GAS),
+    relayer: relayerAddress,
     validBefore: Math.floor(Date.now() / 1000) + 3600, // 1 hour
   };
 

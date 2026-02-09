@@ -26,7 +26,7 @@ async function main() {
         gasLimit: 500000n, // Standard transfer
         data: dataStr ? Buffer.from(dataStr) : undefined,
         chainID: chainID,
-        version: 1, // Settler uses payload.version or 2
+        version: 2, // Must be >= 2 for Relayed V3 compatibility
     });
     // 3. Sign
     const computer = new sdk_core_1.TransactionComputer();
@@ -43,7 +43,7 @@ async function main() {
         data: dataStr,
         signature: signature.toString('hex'),
         chainID: chainID,
-        version: 1,
+        version: 2,
         options: 0,
         gasPrice: 1000000000,
         gasLimit: 500000,

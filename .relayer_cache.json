@@ -55,6 +55,10 @@
     "erd1mxk3rdhrg9smamksyg706q5r2j5jjkf3dxxpfct5p6dh3e9ahamqxsq979": {
       "relayerAddress": "erd1zy0tn3yq244a8y9h0fjy8twunwacr32sn80y0jzc88cz94np5unqwvjq7u",
       "timestamp": 1770582869188
+    },
+    "erd1hafykh7jhz7jvc8a45qu48e0de4yw6rasqe3p2qhl9yj9cm86uesk4j2zh": {
+      "relayerAddress": "erd162ws7zwj0xnw4u2w3vh4v27cx3ru0568hvmxdz7vakd9c86y9m8sazh4gk",
+      "timestamp": 1770592802669
     }
   }
 }
