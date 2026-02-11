@@ -2,17 +2,16 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const BlockchainService_1 = require("../src/BlockchainService");
 const sdk_core_1 = require("@multiversx/sdk-core");
-jest.mock('@multiversx/sdk-core', () => {
-    const original = jest.requireActual('@multiversx/sdk-core');
-    return {
-        ...original,
-        DevnetEntrypoint: jest.fn().mockImplementation(() => ({
-            createSmartContractController: jest.fn().mockImplementation(() => ({
-                query: jest.fn(),
-            })),
+jest.mock('../src/utils/entrypoint', () => ({
+    createEntrypoint: jest.fn().mockImplementation(() => ({
+        createSmartContractController: jest.fn().mockImplementation(() => ({
+            query: jest.fn(),
         })),
-    };
-});
+    })),
+}));
+jest.mock('../src/utils/abi', () => ({
+    createPatchedAbi: jest.fn().mockReturnValue({}),
+}));
 describe('BlockchainService', () => {
     let service;
     let mockController;

@@ -1,11 +1,8 @@
-import {
-  Abi,
-  Address,
-  DevnetEntrypoint,
-  SmartContractController,
-} from '@multiversx/sdk-core';
+import {Address, SmartContractController} from '@multiversx/sdk-core';
 import {CONFIG} from './config';
 import * as identityAbiJson from './abis/identity-registry.abi.json';
+import {createEntrypoint} from './utils/entrypoint';
+import {createPatchedAbi} from './utils/abi';
 
 export interface AgentDetails {
   name: string;
@@ -19,15 +16,8 @@ export class BlockchainService {
   private identityController: SmartContractController;
 
   constructor() {
-    const entrypoint = new DevnetEntrypoint({url: CONFIG.API_URL});
-    // Patch ABI types that sdk-core TypeMapper doesn't recognize
-    const raw = JSON.stringify(identityAbiJson);
-    const patched = JSON.parse(
-      raw
-        .replace(/"TokenId"/g, '"TokenIdentifier"')
-        .replace(/"NonZeroBigUint"/g, '"BigUint"'),
-    );
-    const abi = Abi.create(patched);
+    const entrypoint = createEntrypoint();
+    const abi = createPatchedAbi(identityAbiJson);
     this.identityController = entrypoint.createSmartContractController(abi);
   }
 
@@ -38,7 +28,9 @@ export class BlockchainService {
       arguments: [nonce],
     });
 
-    // The result is already parsed according to the ABI
+    if (!results[0]) {
+      throw new Error(`Agent with nonce ${nonce} not found`);
+    }
     return results[0] as AgentDetails;
   }
 
@@ -52,6 +44,10 @@ export class BlockchainService {
       arguments: [nonce, Buffer.from(serviceId)],
     });
 
-    return results[0] as bigint;
+    const price = results[0];
+    if (price === undefined || price === null) {
+      return 0n; // Default: free service
+    }
+    return BigInt(price.toString());
   }
 }

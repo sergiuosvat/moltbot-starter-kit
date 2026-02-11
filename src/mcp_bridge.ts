@@ -1,7 +1,10 @@
 import axios from 'axios';
+import {Logger} from './utils/logger';
 
 export class McpBridge {
   private baseUrl: string;
+
+  private logger = new Logger('McpBridge');
 
   constructor(url: string) {
     this.baseUrl = url;
@@ -12,7 +15,7 @@ export class McpBridge {
       const res = await axios.get(`${this.baseUrl}/agents/${nonce}/reputation`);
       return res.data.score;
     } catch {
-      console.warn('Failed to fetch reputation, returning default 50');
+      this.logger.warn('Failed to fetch reputation, returning default 50');
       return 50;
     }
   }

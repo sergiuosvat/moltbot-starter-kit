@@ -1,4 +1,3 @@
-
 import {
     Transaction,
     Address,
@@ -7,8 +6,8 @@ import {
     TokenTransfer,
     Token,
     TransactionsFactoryConfig,
-} from "@multiversx/sdk-core";
-import { UserSigner, UserSecretKey } from "@multiversx/sdk-wallet";
+} from '@multiversx/sdk-core';
+import { UserSigner, UserSecretKey } from '@multiversx/sdk-wallet';
 
 // Parse args
 const args = process.argv.slice(2);
@@ -20,21 +19,27 @@ const getArg = (key: string) => {
 
 async function main() {
     try {
-        const senderPk = getArg("--sender-pk");
-        const receiver = getArg("--receiver");
-        const value = getArg("--value") || "0";
-        const nonce = getArg("--nonce") || "0";
-        const gasLimit = getArg("--gas-limit") || "50000";
-        const gasPrice = getArg("--gas-price") || "1000000000";
-        const chainId = getArg("--chain-id");
-        const token = getArg("--token");
-        const amount = getArg("--amount");
-        const data = getArg("--data");
-        const relayer = getArg("--relayer");
-        const version = getArg("--version") ? parseInt(getArg("--version")!) : 1;
+        const senderPk = getArg('--sender-pk');
+        const receiver = getArg('--receiver');
+        const value = getArg('--value') || '0';
+        const nonce = getArg('--nonce') || '0';
+        const gasLimit = getArg('--gas-limit') || '50000';
+        const gasPrice = getArg('--gas-price') || '1000000000';
+        const chainId = getArg('--chain-id');
+        const token = getArg('--token');
+        const amount = getArg('--amount');
+        const data = getArg('--data');
+        const relayer = getArg('--relayer');
+        const version = getArg('--version') ? parseInt(getArg('--version')!) : 1;
+        const validAfter = getArg('--valid-after')
+            ? parseInt(getArg('--valid-after')!)
+            : undefined;
+        const validBefore = getArg('--valid-before')
+            ? parseInt(getArg('--valid-before')!)
+            : undefined;
 
         if (!senderPk || !receiver || !chainId) {
-            console.error("Missing required arguments");
+            console.error('Missing required arguments');
             process.exit(1);
         }
 
@@ -60,7 +65,7 @@ async function main() {
 
             const tokenTransfer = new TokenTransfer({
                 token: new Token({ identifier: token }),
-                amount: BigInt(amount)
+                amount: BigInt(amount),
             });
 
             tx = await factory.createTransactionForESDTTokenTransfer(senderAddress, {
@@ -98,11 +103,12 @@ async function main() {
         tx.signature = signature;
 
         // Convert BigInts to strings/numbers for JSON output
-        const plain: any = tx.toPlainObject();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const plain: Record<string, any> = { ...tx.toPlainObject() };
 
         // Ensure data is string (empty string if null/undefined) to satisfy Zod schema
         if (plain.data === null || plain.data === undefined) {
-            plain.data = "";
+            plain.data = '';
         }
 
         // Fix types for Zod schema
@@ -113,18 +119,24 @@ async function main() {
         // So we MUST convert to Number.
 
         if (typeof plain.nonce === 'bigint') plain.nonce = Number(plain.nonce);
-        if (typeof plain.gasLimit === 'bigint') plain.gasLimit = Number(plain.gasLimit);
-        if (typeof plain.gasPrice === 'bigint') plain.gasPrice = Number(plain.gasPrice);
-        if (typeof plain.version === 'bigint') plain.version = Number(plain.version);
+        if (typeof plain.gasLimit === 'bigint')
+            plain.gasLimit = Number(plain.gasLimit);
+        if (typeof plain.gasPrice === 'bigint')
+            plain.gasPrice = Number(plain.gasPrice);
+        if (typeof plain.version === 'bigint')
+            plain.version = Number(plain.version);
         if (typeof plain.options === 'bigint') {
             plain.options = Number(plain.options);
         } else if (plain.options === undefined || plain.options === null) {
             plain.options = 0;
         }
 
+        // Add time-window fields if provided (application-level, not part of SDK Transaction)
+        if (validAfter !== undefined) plain.validAfter = validAfter;
+        if (validBefore !== undefined) plain.validBefore = validBefore;
 
         const jsonOutput = JSON.stringify(plain, (key, value) =>
-            typeof value === 'bigint' ? value.toString() : value
+            typeof value === 'bigint' ? value.toString() : value,
         );
         console.log(jsonOutput);
     } catch (error) {
@@ -133,4 +145,4 @@ async function main() {
     }
 }
 
-main();
+void main();

@@ -3,15 +3,17 @@ import {
   Transaction,
   TransactionComputer,
   UserSigner,
-  Abi,
-  DevnetEntrypoint,
 } from '@multiversx/sdk-core';
 import {ApiNetworkProvider} from '@multiversx/sdk-network-providers';
 import {CONFIG} from './config';
 import {Facilitator} from './facilitator';
 import * as fs from 'fs';
-import * as path from 'path';
+
 import {Logger} from './utils/logger';
+import {createEntrypoint} from './utils/entrypoint';
+import {createPatchedAbi} from './utils/abi';
+import * as validationAbiJson from './abis/validation-registry.abi.json';
+import * as reputationAbiJson from './abis/reputation-registry.abi.json';
 
 const logger = new Logger('HiringScript');
 
@@ -30,8 +32,8 @@ async function runEmployerFlow() {
 
   // 1. Prepare Job (Architect Phase)
   // Requesting an 'inference' service for agent nonce 1
-  const agentNonce = 1;
-  const serviceId = 'inference';
+  const agentNonce = parseInt(process.env.AGENT_NONCE || '1', 10);
+  const serviceId = process.env.AGENT_SERVICE_ID || 'inference';
 
   logger.info(
     `Preparing job for Agent ${agentNonce}, service: ${serviceId}...`,
@@ -166,16 +168,8 @@ async function waitForJobVerification(jobId: string) {
   const registry = Address.newFromBech32(CONFIG.ADDRESSES.VALIDATION_REGISTRY);
   const maxRetries = 60; // Wait up to 5 minutes (5s * 60)
 
-  const abiPath = path.join(
-    __dirname,
-    '../src/abis/validation-registry.abi.json',
-  );
-  const entrypoint = new DevnetEntrypoint({url: CONFIG.API_URL});
-  const rawAbi = fs
-    .readFileSync(abiPath, 'utf8')
-    .replace(/"TokenId"/g, '"TokenIdentifier"')
-    .replace(/"NonZeroBigUint"/g, '"BigUint"');
-  const abi = Abi.create(JSON.parse(rawAbi));
+  const entrypoint = createEntrypoint();
+  const abi = createPatchedAbi(validationAbiJson);
   const controller = entrypoint.createSmartContractController(abi);
 
   for (let i = 0; i < maxRetries; i++) {
@@ -209,24 +203,15 @@ async function submitReputation(
   signer: UserSigner,
   sender: string,
 ) {
-  const agentNonce = 1;
+  const agentNonce = parseInt(process.env.AGENT_NONCE || '1', 10);
   const registry = Address.newFromBech32(CONFIG.ADDRESSES.REPUTATION_REGISTRY);
   const senderAddr = Address.newFromBech32(sender);
 
-  const abiPath = path.join(
-    __dirname,
-    '../src/abis/reputation-registry.abi.json',
-  );
-  const rawRepAbi = fs
-    .readFileSync(abiPath, 'utf8')
-    .replace(/"TokenId"/g, '"TokenIdentifier"')
-    .replace(/"NonZeroBigUint"/g, '"BigUint"');
-  const abi = Abi.create(JSON.parse(rawRepAbi));
+  const entrypoint = createEntrypoint();
+  const abi = createPatchedAbi(reputationAbiJson);
+  const factory = entrypoint.createSmartContractTransactionsFactory(abi);
 
   const account = await provider.getAccount({bech32: () => sender});
-
-  const entrypoint = new DevnetEntrypoint({url: CONFIG.API_URL});
-  const factory = entrypoint.createSmartContractTransactionsFactory(abi);
 
   const tx = await factory.createTransactionForExecute(senderAddr, {
     contract: registry,

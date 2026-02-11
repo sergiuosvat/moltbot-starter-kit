@@ -33,9 +33,8 @@ class Facilitator {
                     }
                 }
             }
-            catch {
-                // Suppress connection error logs during tests often, but log warn in prod
-                // this.logger.warn("Facilitator poll failed:", (e as Error).message);
+            catch (e) {
+                this.logger.warn(`Facilitator poll failed: ${e.message}`);
             }
         }, 5000);
     }
@@ -55,7 +54,7 @@ class Facilitator {
                 payTo: payload.receiver,
                 amount: payload.value,
                 asset: 'EGLD',
-                network: 'D',
+                network: config_1.CONFIG.CHAIN_ID,
             },
         });
         return res.data;

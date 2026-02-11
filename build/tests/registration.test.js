@@ -6,6 +6,21 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const validator_1 = require("../src/validator");
 const axios_1 = __importDefault(require("axios"));
 jest.mock('axios');
+jest.mock('../src/utils/entrypoint', () => ({
+    createEntrypoint: jest.fn().mockImplementation(() => ({
+        createSmartContractTransactionsFactory: jest.fn().mockReturnValue({
+            createTransactionForExecute: jest.fn().mockResolvedValue({
+                nonce: 0n,
+                version: 1,
+                gasLimit: 1000n,
+                toPlainObject: () => ({}),
+            }),
+        }),
+    })),
+}));
+jest.mock('../src/utils/abi', () => ({
+    createPatchedAbi: jest.fn().mockReturnValue({}),
+}));
 jest.mock('@multiversx/sdk-core', () => {
     return {
         Address: jest.fn().mockImplementation(bech32 => ({
@@ -17,22 +32,9 @@ jest.mock('@multiversx/sdk-core', () => {
         TransactionComputer: jest.fn().mockImplementation(() => ({
             computeBytesForSigning: jest.fn().mockReturnValue(Buffer.from('bytes')),
         })),
-        Abi: {
-            create: jest.fn().mockReturnValue({}),
-        },
         VariadicValue: {
             fromItemsCounted: jest.fn().mockReturnValue([]),
         },
-        DevnetEntrypoint: jest.fn().mockImplementation(() => ({
-            createSmartContractTransactionsFactory: jest.fn().mockReturnValue({
-                createTransactionForExecute: jest.fn().mockResolvedValue({
-                    nonce: 0n,
-                    version: 1,
-                    gasLimit: 1000n,
-                    toPlainObject: () => ({}),
-                }),
-            }),
-        })),
     };
 });
 jest.mock('@multiversx/sdk-wallet', () => ({

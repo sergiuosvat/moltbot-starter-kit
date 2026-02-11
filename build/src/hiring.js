@@ -38,8 +38,11 @@ const sdk_network_providers_1 = require("@multiversx/sdk-network-providers");
 const config_1 = require("./config");
 const facilitator_1 = require("./facilitator");
 const fs = __importStar(require("fs"));
-const path = __importStar(require("path"));
 const logger_1 = require("./utils/logger");
+const entrypoint_1 = require("./utils/entrypoint");
+const abi_1 = require("./utils/abi");
+const validationAbiJson = __importStar(require("./abis/validation-registry.abi.json"));
+const reputationAbiJson = __importStar(require("./abis/reputation-registry.abi.json"));
 const logger = new logger_1.Logger('HiringScript');
 async function runEmployerFlow() {
     logger.info('--- Starting Employer Hiring Flow ---');
@@ -53,8 +56,8 @@ async function runEmployerFlow() {
     const employerAddr = config_1.CONFIG.EMPLOYER.ADDRESS;
     // 1. Prepare Job (Architect Phase)
     // Requesting an 'inference' service for agent nonce 1
-    const agentNonce = 1;
-    const serviceId = 'inference';
+    const agentNonce = parseInt(process.env.AGENT_NONCE || '1', 10);
+    const serviceId = process.env.AGENT_SERVICE_ID || 'inference';
     logger.info(`Preparing job for Agent ${agentNonce}, service: ${serviceId}...`);
     const preparation = await facilitator.prepare({
         agentNonce,
@@ -172,13 +175,8 @@ async function runEmployerFlow() {
 async function waitForJobVerification(jobId) {
     const registry = sdk_core_1.Address.newFromBech32(config_1.CONFIG.ADDRESSES.VALIDATION_REGISTRY);
     const maxRetries = 60; // Wait up to 5 minutes (5s * 60)
-    const abiPath = path.join(__dirname, '../src/abis/validation-registry.abi.json');
-    const entrypoint = new sdk_core_1.DevnetEntrypoint({ url: config_1.CONFIG.API_URL });
-    const rawAbi = fs
-        .readFileSync(abiPath, 'utf8')
-        .replace(/"TokenId"/g, '"TokenIdentifier"')
-        .replace(/"NonZeroBigUint"/g, '"BigUint"');
-    const abi = sdk_core_1.Abi.create(JSON.parse(rawAbi));
+    const entrypoint = (0, entrypoint_1.createEntrypoint)();
+    const abi = (0, abi_1.createPatchedAbi)(validationAbiJson);
     const controller = entrypoint.createSmartContractController(abi);
     for (let i = 0; i < maxRetries; i++) {
         process.stdout.write('.');
@@ -202,18 +200,13 @@ async function waitForJobVerification(jobId) {
     throw new Error('\nJob verification timed out. Worker did not submit proof in time.');
 }
 async function submitReputation(jobId, rating, provider, signer, sender) {
-    const agentNonce = 1;
+    const agentNonce = parseInt(process.env.AGENT_NONCE || '1', 10);
     const registry = sdk_core_1.Address.newFromBech32(config_1.CONFIG.ADDRESSES.REPUTATION_REGISTRY);
     const senderAddr = sdk_core_1.Address.newFromBech32(sender);
-    const abiPath = path.join(__dirname, '../src/abis/reputation-registry.abi.json');
-    const rawRepAbi = fs
-        .readFileSync(abiPath, 'utf8')
-        .replace(/"TokenId"/g, '"TokenIdentifier"')
-        .replace(/"NonZeroBigUint"/g, '"BigUint"');
-    const abi = sdk_core_1.Abi.create(JSON.parse(rawRepAbi));
-    const account = await provider.getAccount({ bech32: () => sender });
-    const entrypoint = new sdk_core_1.DevnetEntrypoint({ url: config_1.CONFIG.API_URL });
+    const entrypoint = (0, entrypoint_1.createEntrypoint)();
+    const abi = (0, abi_1.createPatchedAbi)(reputationAbiJson);
     const factory = entrypoint.createSmartContractTransactionsFactory(abi);
+    const account = await provider.getAccount({ bech32: () => sender });
     const tx = await factory.createTransactionForExecute(senderAddr, {
         contract: registry,
         function: 'submit_feedback',

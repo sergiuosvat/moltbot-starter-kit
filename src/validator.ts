@@ -2,8 +2,6 @@ import {UserSigner} from '@multiversx/sdk-wallet';
 import {
   Address,
   TransactionComputer,
-  Abi,
-  DevnetEntrypoint,
   VariadicValue,
 } from '@multiversx/sdk-core';
 import {ApiNetworkProvider} from '@multiversx/sdk-network-providers';
@@ -15,6 +13,8 @@ import * as identityAbiJson from './abis/identity-registry.abi.json';
 import * as validationAbiJson from './abis/validation-registry.abi.json';
 import {Logger} from './utils/logger';
 import {PoWSolver} from './pow';
+import {createEntrypoint} from './utils/entrypoint';
+import {createPatchedAbi} from './utils/abi';
 
 export class Validator {
   private logger = new Logger('Validator');
@@ -48,11 +48,8 @@ export class Validator {
     );
 
     // 3. Construct Transaction using ABI Factory
-    const entrypoint = new DevnetEntrypoint({url: CONFIG.API_URL});
-    const rawValAbi = JSON.stringify(validationAbiJson)
-      .replace(/"TokenId"/g, '"TokenIdentifier"')
-      .replace(/"NonZeroBigUint"/g, '"BigUint"');
-    const validationAbi = Abi.create(JSON.parse(rawValAbi));
+    const entrypoint = createEntrypoint();
+    const validationAbi = createPatchedAbi(validationAbiJson);
     const factory =
       entrypoint.createSmartContractTransactionsFactory(validationAbi);
 
@@ -176,11 +173,8 @@ export class Validator {
     });
 
     // 3. Create Registration Tx using ABI Factory
-    const entrypoint = new DevnetEntrypoint({url: CONFIG.API_URL});
-    const rawIdAbi = JSON.stringify(identityAbiJson)
-      .replace(/"TokenId"/g, '"TokenIdentifier"')
-      .replace(/"NonZeroBigUint"/g, '"BigUint"');
-    const identityAbi = Abi.create(JSON.parse(rawIdAbi));
+    const entrypoint = createEntrypoint();
+    const identityAbi = createPatchedAbi(identityAbiJson);
     const factory =
       entrypoint.createSmartContractTransactionsFactory(identityAbi);
 

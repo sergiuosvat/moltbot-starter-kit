@@ -37,16 +37,13 @@ exports.BlockchainService = void 0;
 const sdk_core_1 = require("@multiversx/sdk-core");
 const config_1 = require("./config");
 const identityAbiJson = __importStar(require("./abis/identity-registry.abi.json"));
+const entrypoint_1 = require("./utils/entrypoint");
+const abi_1 = require("./utils/abi");
 class BlockchainService {
     identityController;
     constructor() {
-        const entrypoint = new sdk_core_1.DevnetEntrypoint({ url: config_1.CONFIG.API_URL });
-        // Patch ABI types that sdk-core TypeMapper doesn't recognize
-        const raw = JSON.stringify(identityAbiJson);
-        const patched = JSON.parse(raw
-            .replace(/"TokenId"/g, '"TokenIdentifier"')
-            .replace(/"NonZeroBigUint"/g, '"BigUint"'));
-        const abi = sdk_core_1.Abi.create(patched);
+        const entrypoint = (0, entrypoint_1.createEntrypoint)();
+        const abi = (0, abi_1.createPatchedAbi)(identityAbiJson);
         this.identityController = entrypoint.createSmartContractController(abi);
     }
     async getAgentDetails(nonce) {
@@ -55,7 +52,9 @@ class BlockchainService {
             function: 'get_agent',
             arguments: [nonce],
         });
-        // The result is already parsed according to the ABI
+        if (!results[0]) {
+            throw new Error(`Agent with nonce ${nonce} not found`);
+        }
         return results[0];
     }
     async getAgentServicePrice(nonce, serviceId) {
@@ -64,7 +63,11 @@ class BlockchainService {
             function: 'get_agent_service_price',
             arguments: [nonce, Buffer.from(serviceId)],
         });
-        return results[0];
+        const price = results[0];
+        if (price === undefined || price === null) {
+            return 0n; // Default: free service
+        }
+        return BigInt(price.toString());
     }
 }
 exports.BlockchainService = BlockchainService;

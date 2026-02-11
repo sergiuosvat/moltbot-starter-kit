@@ -1,17 +1,17 @@
 import {BlockchainService} from '../src/BlockchainService';
 import {Address} from '@multiversx/sdk-core';
 
-jest.mock('@multiversx/sdk-core', () => {
-  const original = jest.requireActual('@multiversx/sdk-core');
-  return {
-    ...original,
-    DevnetEntrypoint: jest.fn().mockImplementation(() => ({
-      createSmartContractController: jest.fn().mockImplementation(() => ({
-        query: jest.fn(),
-      })),
+jest.mock('../src/utils/entrypoint', () => ({
+  createEntrypoint: jest.fn().mockImplementation(() => ({
+    createSmartContractController: jest.fn().mockImplementation(() => ({
+      query: jest.fn(),
     })),
-  };
-});
+  })),
+}));
+
+jest.mock('../src/utils/abi', () => ({
+  createPatchedAbi: jest.fn().mockReturnValue({}),
+}));
 
 describe('BlockchainService', () => {
   let service: BlockchainService;

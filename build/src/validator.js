@@ -48,6 +48,8 @@ const identityAbiJson = __importStar(require("./abis/identity-registry.abi.json"
 const validationAbiJson = __importStar(require("./abis/validation-registry.abi.json"));
 const logger_1 = require("./utils/logger");
 const pow_1 = require("./pow");
+const entrypoint_1 = require("./utils/entrypoint");
+const abi_1 = require("./utils/abi");
 class Validator {
     logger = new logger_1.Logger('Validator');
     relayerUrl = null;
@@ -71,11 +73,8 @@ class Validator {
         // 2. Fetch Account State (Nonce) with Timeout
         const account = await this.withTimeout(provider.getAccount({ bech32: () => senderAddress.toBech32() }), 'Fetching Account');
         // 3. Construct Transaction using ABI Factory
-        const entrypoint = new sdk_core_1.DevnetEntrypoint({ url: config_1.CONFIG.API_URL });
-        const rawValAbi = JSON.stringify(validationAbiJson)
-            .replace(/"TokenId"/g, '"TokenIdentifier"')
-            .replace(/"NonZeroBigUint"/g, '"BigUint"');
-        const validationAbi = sdk_core_1.Abi.create(JSON.parse(rawValAbi));
+        const entrypoint = (0, entrypoint_1.createEntrypoint)();
+        const validationAbi = (0, abi_1.createPatchedAbi)(validationAbiJson);
         const factory = entrypoint.createSmartContractTransactionsFactory(validationAbi);
         const receiver = new sdk_core_1.Address(config_1.CONFIG.ADDRESSES.VALIDATION_REGISTRY);
         const tx = await factory.createTransactionForExecute(senderAddress, {
@@ -168,11 +167,8 @@ class Validator {
             bech32: () => senderAddress.toBech32(),
         });
         // 3. Create Registration Tx using ABI Factory
-        const entrypoint = new sdk_core_1.DevnetEntrypoint({ url: config_1.CONFIG.API_URL });
-        const rawIdAbi = JSON.stringify(identityAbiJson)
-            .replace(/"TokenId"/g, '"TokenIdentifier"')
-            .replace(/"NonZeroBigUint"/g, '"BigUint"');
-        const identityAbi = sdk_core_1.Abi.create(JSON.parse(rawIdAbi));
+        const entrypoint = (0, entrypoint_1.createEntrypoint)();
+        const identityAbi = (0, abi_1.createPatchedAbi)(identityAbiJson);
         const factory = entrypoint.createSmartContractTransactionsFactory(identityAbi);
         const tx = await factory.createTransactionForExecute(senderAddress, {
             contract: new sdk_core_1.Address(config_1.CONFIG.ADDRESSES.IDENTITY_REGISTRY),

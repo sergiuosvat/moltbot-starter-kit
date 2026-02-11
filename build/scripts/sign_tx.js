@@ -12,20 +12,26 @@ const getArg = (key) => {
 };
 async function main() {
     try {
-        const senderPk = getArg("--sender-pk");
-        const receiver = getArg("--receiver");
-        const value = getArg("--value") || "0";
-        const nonce = getArg("--nonce") || "0";
-        const gasLimit = getArg("--gas-limit") || "50000";
-        const gasPrice = getArg("--gas-price") || "1000000000";
-        const chainId = getArg("--chain-id");
-        const token = getArg("--token");
-        const amount = getArg("--amount");
-        const data = getArg("--data");
-        const relayer = getArg("--relayer");
-        const version = getArg("--version") ? parseInt(getArg("--version")) : 1;
+        const senderPk = getArg('--sender-pk');
+        const receiver = getArg('--receiver');
+        const value = getArg('--value') || '0';
+        const nonce = getArg('--nonce') || '0';
+        const gasLimit = getArg('--gas-limit') || '50000';
+        const gasPrice = getArg('--gas-price') || '1000000000';
+        const chainId = getArg('--chain-id');
+        const token = getArg('--token');
+        const amount = getArg('--amount');
+        const data = getArg('--data');
+        const relayer = getArg('--relayer');
+        const version = getArg('--version') ? parseInt(getArg('--version')) : 1;
+        const validAfter = getArg('--valid-after')
+            ? parseInt(getArg('--valid-after'))
+            : undefined;
+        const validBefore = getArg('--valid-before')
+            ? parseInt(getArg('--valid-before'))
+            : undefined;
         if (!senderPk || !receiver || !chainId) {
-            console.error("Missing required arguments");
+            console.error('Missing required arguments');
             process.exit(1);
         }
         let secretKey;
@@ -47,7 +53,7 @@ async function main() {
             });
             const tokenTransfer = new sdk_core_1.TokenTransfer({
                 token: new sdk_core_1.Token({ identifier: token }),
-                amount: BigInt(amount)
+                amount: BigInt(amount),
             });
             tx = await factory.createTransactionForESDTTokenTransfer(senderAddress, {
                 receiver: receiverAddress,
@@ -82,10 +88,11 @@ async function main() {
         const signature = await signer.sign(serialized);
         tx.signature = signature;
         // Convert BigInts to strings/numbers for JSON output
-        const plain = tx.toPlainObject();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const plain = { ...tx.toPlainObject() };
         // Ensure data is string (empty string if null/undefined) to satisfy Zod schema
         if (plain.data === null || plain.data === undefined) {
-            plain.data = "";
+            plain.data = '';
         }
         // Fix types for Zod schema
         // The SDK might return plain objects with BigInts, but JSON.stringify can handle them with the replacer below.
@@ -107,6 +114,11 @@ async function main() {
         else if (plain.options === undefined || plain.options === null) {
             plain.options = 0;
         }
+        // Add time-window fields if provided (application-level, not part of SDK Transaction)
+        if (validAfter !== undefined)
+            plain.validAfter = validAfter;
+        if (validBefore !== undefined)
+            plain.validBefore = validBefore;
         const jsonOutput = JSON.stringify(plain, (key, value) => typeof value === 'bigint' ? value.toString() : value);
         console.log(jsonOutput);
     }
@@ -115,5 +127,5 @@ async function main() {
         process.exit(1);
     }
 }
-main();
+void main();
 //# sourceMappingURL=sign_tx.js.map
