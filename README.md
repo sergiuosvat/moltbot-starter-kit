@@ -15,14 +15,14 @@ A fully functional, hardened implementation of an OpenClaw Agent with a comprehe
 ## Quick Start
 
 ```bash
-git clone https://github.com/multiversx/moltbot-starter-kit.git
+git clone https://github.com/sasurobert/moltbot-starter-kit.git
 cd moltbot-starter-kit
 chmod +x setup.sh && ./setup.sh
 ```
 
 Or install via the OpenClaw one-liner (includes SKILL.md + references):
 ```bash
-curl -sL https://raw.githubusercontent.com/multiversx/multiversx-openclaw-skills/main/scripts/install.sh | bash
+curl -sL https://raw.githubusercontent.com/sasurobert/multiversx-openclaw-skills/main/scripts/install.sh | bash
 ```
 
 ## Skills Library
@@ -90,7 +90,7 @@ npm run test:coverage # With coverage report
 
 ## Documentation
 
-- [SKILL.md](https://github.com/multiversx/multiversx-openclaw-skills/blob/main/SKILL.md) — Full agent instructions
+- [SKILL.md](https://github.com/sasurobert/multiversx-openclaw-skills/blob/main/SKILL.md) — Full agent instructions
 - [STARTER_KIT_GUIDE.md](./STARTER_KIT_GUIDE.md) — Step-by-step setup guide
 
 ## License
