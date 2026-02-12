@@ -54,12 +54,12 @@ async function main() {
     logger.info('Starting Moltbot...');
     // Load Config
     try {
-        const configPath = path.resolve('config.json');
+        const configPath = path.resolve('agent.config.json');
         const config = JSON.parse(await fs_1.promises.readFile(configPath, 'utf8'));
         logger.info(`Loaded Agent: ${config.agentName} (ID: ${config.nonce})`);
     }
     catch {
-        logger.warn('Config not found or invalid.');
+        logger.warn('agent.config.json not found. See agent.config.example.json.');
     }
     // Initialize Bridges
     new mcp_bridge_1.McpBridge(config_1.CONFIG.PROVIDERS.MCP_URL);

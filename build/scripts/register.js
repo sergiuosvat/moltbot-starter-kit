@@ -100,7 +100,7 @@ async function main() {
     const signer = sdk_wallet_1.UserSigner.fromPem(pemContent);
     const senderAddress = new sdk_core_1.Address(signer.getAddress().bech32());
     // 2. Load Config
-    const configPath = path.resolve('config.json');
+    const configPath = path.resolve('agent.config.json');
     let config = {
         agentName: 'Moltbot',
         nonce: 0,
@@ -114,7 +114,7 @@ async function main() {
         config = JSON.parse(await fs_1.promises.readFile(configPath, 'utf8'));
     }
     catch {
-        console.warn('Config file missing, utilizing defaults.');
+        console.warn('agent.config.json not found, using defaults. See agent.config.example.json.');
     }
     console.log(`Registering Agent: ${config.agentName}...`);
     // 3. Load ABI and construct transaction using SmartContractTransactionsFactory

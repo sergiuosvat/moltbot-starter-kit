@@ -63,7 +63,7 @@ async function main() {
     const signer = sdk_wallet_1.UserSigner.fromPem(pemContent);
     const senderAddress = new sdk_core_1.Address(signer.getAddress().bech32());
     // 2. Load Config
-    const configPath = path.resolve('config.json');
+    const configPath = path.resolve('agent.config.json');
     const config = JSON.parse(await fs_1.promises.readFile(configPath, 'utf8'));
     console.log(`Updating Agent: ${config.agentName}`);
     // 3. Validate agent nonce
@@ -73,7 +73,7 @@ async function main() {
         process.exit(1);
     }
     if (!config.nonce || config.nonce === 0) {
-        console.error('❌ Agent nonce not found in config.json. Register first.');
+        console.error('❌ Agent nonce not found in agent.config.json. Register first.');
         process.exit(1);
     }
     const account = await provider.getAccount({
