@@ -38,10 +38,10 @@ Create your `.env` file and configure your environment variables:
 cp .env.example .env
 ```
 
-You must add the following **User Inputs** to your `.env` file to enable IPFS pinning for the agent manifest:
+The default configuration is set for **Devnet**. You only need to update the following **User Inputs** in your `.env` file (leave other variables at their defaults):
 
-- **Pinata Key** (`PINATA_API_KEY`): Your API Key from Pinata.
-- **Pinata Secret** (`PINATA_SECRET_KEY`): Your Secret Key from Pinata.
+- **Pinata Key** (`PINATA_API_KEY`): Your API Key from Pinata (required for IPFS).
+- **Pinata Secret** (`PINATA_SECRET`): Your Secret Key from Pinata.
 
 ### 3. Configure Manifest
 
