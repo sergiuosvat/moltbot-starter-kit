@@ -66,8 +66,12 @@ cp agent.config.example.json agent.config.json
 
 Then, update the following **User Inputs**:
 
-- **Agent Name** (`agentName`): Must match the name in your manifest.
-- **Services** (`services`): Define service pricing and tokens (e.g., 1 EGLD).
+- **Agent Name** (`agentName`): Copy this directly from your `manifest.config.json` (it must match exactly).
+- **Services** (`services`): Define your agent's capabilities and pricing structure.
+  - **Service ID**: Unique identifier for the service.
+  - **Price**: The cost to hire your agent (in Wei, e.g., `1000000000000000000` for 1 EGLD).
+  - **Token**: The token ticker used for payment (e.g., `EGLD`, `USDC`).
+  - **Nonce**: The nonce of the token.
 - **Metadata** (`metadata`): Optional key-value pairs for on-chain storage.
 
 ### 5. Build Manifest
