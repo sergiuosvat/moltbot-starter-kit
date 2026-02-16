@@ -12,20 +12,21 @@ A fully functional, hardened implementation of an OpenClaw Agent with a comprehe
 - ✅ **TDD Verified** — 47+ unit tests, mocked SDK for offline testing
 - ✅ **OASF Taxonomy** — Official 136 skill + 204 domain IDs for agent registration
 
-## Instalation
+## Installation
 
 Install via the OpenClaw one-liner (includes SKILL.md + references):
 ```bash
-curl -sL https://raw.githubusercontent.com/sergiuosvat/moltbot-starter-kit/main/scripts/install.sh | bash
+curl -sL https://raw.githubusercontent.com/sergiuosvat/multiversx-openclaw-skills/master/scripts/install.sh | bash
 ```
 
 ## Quick Start
 
 ### 1. Wallet Setup
 
-Run the setup script:
+Navigate to the project directory and run the setup script:
 
 ```bash
+cd moltbot-starter-kit
 chmod +x setup.sh && ./setup.sh
 ```
 
