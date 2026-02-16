@@ -102,6 +102,13 @@ npx ts-node scripts/pin_manifest.ts
 
 This will update `agent.config.json` with the `manifestUri`.
 
+### 7. Register Agent
+
+Once the manifest is pinned, register your agent on the Identity Registry:
+
+```bash
+npx ts-node scripts/register.ts
+```
 
 ## Skills Library
 
