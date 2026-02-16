@@ -16,33 +16,6 @@ echo "✓ node $(node -v), npm $(npm -v)"
 echo "📦 Installing dependencies..."
 npm install
 
-# Config
-if [ ! -f .env ]; then
-    if [ -f .env.example ]; then
-        cp .env.example .env
-        echo "⚙️  Created .env from .env.example — edit before running"
-    else
-        cat > .env << 'EOF'
-MULTIVERSX_CHAIN_ID=D
-MULTIVERSX_API_URL=https://devnet-api.multiversx.com
-IDENTITY_REGISTRY_ADDRESS=erd1...
-EOF
-        echo "⚙️  Created default .env — edit before running"
-    fi
-fi
-
-if [ ! -f config.json ]; then
-    cat > config.json << 'EOF'
-{
-    "agentName": "MoltBot-Gen1",
-    "nonce": 0,
-    "pricing": "1USDC",
-    "capabilities": ["search", "compute"]
-}
-EOF
-    echo "⚙️  Created default config.json"
-fi
-
 # Wallet
 if [ ! -f wallet.pem ]; then
     echo "🔑 Generating wallet..."
