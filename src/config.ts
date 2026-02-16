@@ -2,7 +2,7 @@ import * as dotenv from 'dotenv';
 import * as path from 'path';
 
 // Load .env from root
-dotenv.config({path: path.resolve(__dirname, '../.env')});
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 export const CONFIG = {
   // Network
@@ -39,7 +39,7 @@ export const CONFIG = {
 
   // Transaction Settings
   GAS_LIMITS: {
-    REGISTER: 10_000_000n,
+    REGISTER: 15_000_000n,
     UPDATE: 10_000_000n,
     SUBMIT_PROOF: 10_000_000n,
     REGISTER_AGENT: BigInt(process.env.GAS_LIMIT_REGISTER_AGENT || '6000000'),
