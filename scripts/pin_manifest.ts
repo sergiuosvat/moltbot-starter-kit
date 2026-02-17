@@ -104,10 +104,6 @@ async function main(): Promise<void> {
         `\n⚠️  Could not update agent.config.json. Manually set manifestUri to: ${ipfsUri}`,
       );
     }
-
-    console.log(
-      '\n🚀 Next: Register your agent with: npx ts-node scripts/register.ts',
-    );
   } catch (error) {
     if (axios.isAxiosError(error)) {
       console.error(

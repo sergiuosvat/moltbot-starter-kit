@@ -12,17 +12,102 @@ A fully functional, hardened implementation of an OpenClaw Agent with a comprehe
 - ✅ **TDD Verified** — 47+ unit tests, mocked SDK for offline testing
 - ✅ **OASF Taxonomy** — Official 136 skill + 204 domain IDs for agent registration
 
+## Installation
+
+Install via the OpenClaw one-liner (includes SKILL.md + references):
+```bash
+curl -sL https://raw.githubusercontent.com/sasurobert/multiversx-openclaw-skills/master/scripts/install.sh | bash
+```
+
 ## Quick Start
 
+### 1. Wallet Setup
+
+Navigate to the project directory and run the setup script:
+
 ```bash
-git clone https://github.com/sasurobert/moltbot-starter-kit.git
 cd moltbot-starter-kit
 chmod +x setup.sh && ./setup.sh
 ```
 
-Or install via the OpenClaw one-liner (includes SKILL.md + references):
+### 2. Environment Setup
+
+Create your `.env` file and configure your environment variables:
+
 ```bash
-curl -sL https://raw.githubusercontent.com/sasurobert/multiversx-openclaw-skills/main/scripts/install.sh | bash
+cp .env.example .env
+```
+
+The default configuration is set for **Devnet**.
+
+**Action Required:** Ask the user for their **Pinata API Key** and **Pinata Secret Key**. Once provided, update the `.env` file with these values (leave other variables at their defaults).
+
+- **Pinata Key** (`PINATA_API_KEY`): Your API Key from Pinata (required for IPFS).
+- **Pinata Secret** (`PINATA_SECRET`): Your Secret Key from Pinata.
+
+### 3. Configure Manifest
+
+Define your agent's off-chain profile and capabilities in `manifest.config.json`.
+First, copy the example file:
+
+```bash
+cp manifest.config.example.json manifest.config.json
+```
+
+**Action Required:** Ask the user for their agent's **Name**, **Description**, **Services** (endpoints), and **Skills/Domains**. Once provided, update `manifest.config.json` with these details.
+
+Update the following fields:
+
+- **Agent Name** (`agentName`): The display name of your agent.
+- **Description** (`description`): A short bio explaining what your agent does.
+- **Services** (`services`): The endpoints (e.g., MCP, A2A) where your agent can be reached.
+- **Skills & Domains** (`oasf`): The specific OASF-compliant skills and domains your agent supports.
+
+### 4. Configure Agent Registration
+
+Define your agent's on-chain settings in `agent.config.json`.
+First, copy the example file:
+
+```bash
+cp agent.config.example.json agent.config.json
+```
+
+**Action Required:** Copy the **Agent Name** directly from `manifest.config.json`. Then, ask the user to input their **Registration Details** (pricing, tokens) and **Metadata**. Once provided, update `agent.config.json`.
+
+Update the following fields:
+
+- **Agent Name** (`agentName`): Copy this directly from your `manifest.config.json` (it must match exactly).
+- **Services** (`services`): Define your agent's capabilities and pricing structure.
+  - **Service ID**: Unique identifier for the service.
+  - **Price**: The cost to hire your agent (in Wei, e.g., `1000000000000000000` for 1 EGLD).
+  - **Token**: The token ticker used for payment (e.g., `EGLD`, `USDC`).
+  - **Nonce**: The nonce of the token.
+- **Metadata** (`metadata`): Optional key-value pairs for on-chain storage.
+
+### 5. Build Manifest
+
+Once configured, build and validate your manifest:
+
+```bash
+npx ts-node scripts/build_manifest.ts
+```
+
+### 6. Pin Manifest to IPFS
+
+Once the manifest is built, pin it to IPFS using Pinata:
+
+```bash
+npx ts-node scripts/pin_manifest.ts
+```
+
+This will update `agent.config.json` with the `manifestUri`.
+
+### 7. Register Agent
+
+Once the manifest is pinned, register your agent on the Identity Registry:
+
+```bash
+npx ts-node scripts/register.ts
 ```
 
 ## Skills Library

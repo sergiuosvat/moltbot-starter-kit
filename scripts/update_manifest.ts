@@ -68,7 +68,6 @@ async function main() {
   const configPath = path.resolve('agent.config.json');
   const config: {
     agentName: string;
-    capabilities: string[];
     nonce: number;
     manifestUri: string;
     metadata: Array<{key: string; value: string}>;
@@ -92,7 +91,7 @@ async function main() {
 
   if (!config.nonce || config.nonce === 0) {
     console.error(
-      '❌ Agent nonce not found in agent.config.json. Register first.',
+      '❌ Agent nonce not found in agent.config.json. Add it first.',
     );
     process.exit(1);
   }

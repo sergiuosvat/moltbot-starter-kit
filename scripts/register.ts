@@ -115,9 +115,6 @@ async function main() {
   const configPath = path.resolve('agent.config.json');
   let config: {
     agentName: string;
-    nonce: number;
-    pricing: string;
-    capabilities: string[];
     manifestUri: string;
     metadata: Array<{key: string; value: string}>;
     services: Array<{
@@ -128,9 +125,6 @@ async function main() {
     }>;
   } = {
     agentName: 'Moltbot',
-    nonce: 0,
-    pricing: '1USDC',
-    capabilities: [],
     manifestUri: '',
     metadata: [],
     services: [],
