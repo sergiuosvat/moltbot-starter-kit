@@ -3,11 +3,7 @@
  * treating null as “maybe empty, maybe failed”.
  */
 export type AcpErrorCode =
-  | 'NETWORK'
-  | 'HTTP'
-  | 'INVALID_RESPONSE'
-  | 'SSRF'
-  | 'UNKNOWN';
+  'NETWORK' | 'HTTP' | 'INVALID_RESPONSE' | 'SSRF' | 'UNKNOWN';
 
 export class AcpError extends Error {
   readonly code: AcpErrorCode;

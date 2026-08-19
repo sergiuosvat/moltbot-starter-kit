@@ -29,9 +29,7 @@ export class McpBridge {
   private client: Client | null = null;
 
   private transport:
-    | StreamableHTTPClientTransport
-    | StdioClientTransport
-    | null = null;
+    StreamableHTTPClientTransport | StdioClientTransport | null = null;
 
   private connectPromise: Promise<Client> | null = null;
 
