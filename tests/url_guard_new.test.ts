@@ -2,7 +2,10 @@
  * Additional url_guard tests for new deny-by-default behaviour
  * when ALLOWED_DOMAINS is empty/unset.
  */
-import {assertAllowedAgentUrl, assertAllowedFetchUrl} from '../src/utils/url_guard';
+import {
+  assertAllowedAgentUrl,
+  assertAllowedFetchUrl,
+} from '../src/utils/url_guard';
 import {CONFIG} from '../src/config';
 
 describe('url_guard — empty ALLOWED_DOMAINS deny-by-default', () => {
@@ -42,13 +45,15 @@ describe('url_guard — empty ALLOWED_DOMAINS deny-by-default', () => {
 
   it('rejects when domain is not in non-empty ALLOWED_DOMAINS', () => {
     CONFIG.SECURITY.ALLOWED_DOMAINS = ['trusted.io'];
-    expect(() =>
-      assertAllowedAgentUrl('https://untrusted.com/api'),
-    ).toThrow('Agent URL domain not allowed');
+    expect(() => assertAllowedAgentUrl('https://untrusted.com/api')).toThrow(
+      'Agent URL domain not allowed',
+    );
   });
 
   it('rejects invalid URL regardless of ALLOWED_DOMAINS', () => {
     CONFIG.SECURITY.ALLOWED_DOMAINS = ['example.com'];
-    expect(() => assertAllowedAgentUrl('not-a-url')).toThrow('Invalid agent URL');
+    expect(() => assertAllowedAgentUrl('not-a-url')).toThrow(
+      'Invalid agent URL',
+    );
   });
 });

@@ -58,7 +58,10 @@ describe('JobHandler — ACK on duplicate delivery', () => {
     await jobStore.claim('dup-job', 'proof-1');
     await jobStore.markCompleted('dup-job', 'hash-abc');
 
-    const payment = makePayment({id: 'proof-1', meta: {jobId: 'dup-job', payload: 'x'}});
+    const payment = makePayment({
+      id: 'proof-1',
+      meta: {jobId: 'dup-job', payload: 'x'},
+    });
     handler.enqueue('dup-job', payment as any);
 
     // Drain the queue promise directly

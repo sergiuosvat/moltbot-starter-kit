@@ -5,11 +5,17 @@ import {assertValidDid} from '../src/utils/identity_encoding';
 
 describe('assertValidDid()', () => {
   it('accepts a valid did:key DID', () => {
-    expect(() => assertValidDid('did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK')).not.toThrow();
+    expect(() =>
+      assertValidDid(
+        'did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK',
+      ),
+    ).not.toThrow();
   });
 
   it('accepts a valid did:ethr DID', () => {
-    expect(() => assertValidDid('did:ethr:0xabcdef1234567890abcdef1234567890abcdef12')).not.toThrow();
+    expect(() =>
+      assertValidDid('did:ethr:0xabcdef1234567890abcdef1234567890abcdef12'),
+    ).not.toThrow();
   });
 
   it('accepts a valid did:web DID', () => {
@@ -17,7 +23,9 @@ describe('assertValidDid()', () => {
   });
 
   it('accepts a DID with colons in the identifier segment', () => {
-    expect(() => assertValidDid('did:example:namespace:specific-id')).not.toThrow();
+    expect(() =>
+      assertValidDid('did:example:namespace:specific-id'),
+    ).not.toThrow();
   });
 
   it('rejects a plain string', () => {
@@ -38,6 +46,8 @@ describe('assertValidDid()', () => {
   });
 
   it('rejects did with missing method', () => {
-    expect(() => assertValidDid('did::identifier')).toThrow('Invalid DID format');
+    expect(() => assertValidDid('did::identifier')).toThrow(
+      'Invalid DID format',
+    );
   });
 });

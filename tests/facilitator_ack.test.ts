@@ -140,9 +140,9 @@ describe('Facilitator.acknowledge()', () => {
     await jest.runAllTimersAsync();
     await p;
 
-    expect(
-      warnSpy.mock.calls.some(c => String(c[0]).includes('ACK')),
-    ).toBe(true);
+    expect(warnSpy.mock.calls.some(c => String(c[0]).includes('ACK'))).toBe(
+      true,
+    );
     warnSpy.mockRestore();
   });
 });

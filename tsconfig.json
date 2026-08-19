@@ -5,7 +5,8 @@
     "outDir": "dist",
     "resolveJsonModule": true,
     "esModuleInterop": true,
-    "lib": ["ES2022", "DOM"]
+    "lib": ["ES2022", "DOM"],
+    "types": ["node", "jest"]
   },
   "include": [
     "src/**/*.ts",

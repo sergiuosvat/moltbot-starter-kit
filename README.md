@@ -248,7 +248,11 @@ See [STARTER_KIT_GUIDE.md](./STARTER_KIT_GUIDE.md#5-deployment) for PM2 and prod
 ```bash
 npm test              # All tests
 npm run test:coverage # With coverage report
+npm run lint          # Check lint + formatting
+npm run fix           # Auto-fix lint + formatting
 ```
+
+A pre-commit hook (husky + lint-staged) runs `gts fix` on staged TypeScript/JavaScript files. Unfixable lint errors block the commit. `npm install` installs the hook via the `prepare` script.
 
 ## Documentation
 
