@@ -1,95 +1,43 @@
 /**
  * Build Agent Registration Manifest (registration-v1 JSON)
  *
- * Reads manifest.config.json and generates a complete MX-8004 registration manifest
- * with OASF taxonomy validation.
+ * Reads manifest.config.json and generates a complete MX-8004 registration
+ * manifest via buildManifest (includes OASF taxonomy validation).
  *
  * Usage: npx ts-node scripts/build_manifest.ts
  * Output: manifest.json in the project root
  */
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import {
+  buildManifest,
+  type ManifestConfig,
+  type ManifestService,
+} from '../src/skills/manifest_skills';
 
-// ─── OASF Taxonomy (inline for standalone script) ──────────────────────────────
-
-interface OASFSkillGroup {
-  category: string;
-  items: string[];
-}
-
-interface OASFDomainGroup {
-  category: string;
-  items: string[];
-}
-
-const OASF_SCHEMA_VERSION = '0.8.0';
-
-// ─── Manifest Types ────────────────────────────────────────────────────────────
-
-interface ServiceOffering {
-  serviceId: number;
-  name: string;
-  description: string;
-  sla?: number;
-  requirements?: Record<string, unknown>;
-  deliverables?: Record<string, unknown>;
-}
-
-interface ManifestService {
-  name: string;
-  endpoint: string;
-  version?: string;
-  offerings?: ServiceOffering[];
-}
-
-interface ManifestContact {
-  email?: string;
-  website?: string;
-}
-
-interface AgentManifest {
-  type: string;
-  name: string;
-  description: string;
-  image?: string;
-  version: string;
-  active: boolean;
-  services: ManifestService[];
-  oasf: {
-    schemaVersion: string;
-    skills: OASFSkillGroup[];
-    domains: OASFDomainGroup[];
-  };
-  contact?: ManifestContact;
-  x402Support: boolean;
-}
-
-interface ManifestConfig {
-  agentName: string;
+interface FileConfig {
+  agentName?: string;
   description?: string;
   image?: string;
   version?: string;
   services?: ManifestService[];
   oasf?: {
-    skills?: OASFSkillGroup[];
-    domains?: OASFDomainGroup[];
+    skills?: ManifestConfig['skills'];
+    domains?: ManifestConfig['domains'];
   };
-  contact?: ManifestContact;
+  contact?: ManifestConfig['contact'];
   x402Support?: boolean;
-  manifestUri?: string;
 }
-
-// ─── Main ──────────────────────────────────────────────────────────────────────
 
 async function main(): Promise<void> {
   console.log('📋 Building Agent Registration Manifest...\n');
 
   const configPath = path.resolve('manifest.config.json');
-  let config: ManifestConfig;
+  let fileConfig: FileConfig;
 
   try {
     const raw = await fs.readFile(configPath, 'utf8');
-    config = JSON.parse(raw) as ManifestConfig;
+    fileConfig = JSON.parse(raw) as FileConfig;
   } catch {
     console.error(
       '❌ Could not read manifest.config.json. Create one with agent details.',
@@ -100,27 +48,31 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  if (!config.agentName) {
+  if (!fileConfig.agentName) {
     console.error('❌ manifest.config.json must have an "agentName" field.');
     process.exit(1);
   }
 
-  const manifest: AgentManifest = {
-    type: 'https://multiversx.com/standards/mx-8004#registration-v1',
-    name: config.agentName,
-    description: config.description || `${config.agentName} — MultiversX Agent`,
-    image: config.image || undefined,
-    version: config.version || '1.0.0',
-    active: true,
-    services: config.services || [],
-    oasf: {
-      schemaVersion: OASF_SCHEMA_VERSION,
-      skills: config.oasf?.skills || [],
-      domains: config.oasf?.domains || [],
-    },
-    contact: config.contact,
-    x402Support: config.x402Support ?? true,
+  const skillConfig: ManifestConfig = {
+    name: fileConfig.agentName,
+    description:
+      fileConfig.description || `${fileConfig.agentName} — MultiversX Agent`,
+    image: fileConfig.image,
+    version: fileConfig.version,
+    services: fileConfig.services,
+    skills: fileConfig.oasf?.skills,
+    domains: fileConfig.oasf?.domains,
+    contact: fileConfig.contact,
+    x402Support: fileConfig.x402Support,
   };
+
+  let manifest;
+  try {
+    manifest = buildManifest(skillConfig);
+  } catch (err) {
+    console.error(`❌ ${(err as Error).message}`);
+    process.exit(1);
+  }
 
   const warnings: string[] = [];
 
@@ -178,8 +130,7 @@ async function main(): Promise<void> {
   }
 
   const outputPath = path.resolve('manifest.json');
-  const json = JSON.stringify(manifest, null, 2);
-  await fs.writeFile(outputPath, json, 'utf8');
+  await fs.writeFile(outputPath, JSON.stringify(manifest, null, 2), 'utf8');
 
   const totalOfferings = manifest.services.reduce(
     (sum, svc) => sum + (svc.offerings?.length ?? 0),

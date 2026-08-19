@@ -31,6 +31,7 @@ import * as dotenv from 'dotenv';
 import * as path from 'path';
 import {CONFIG} from '../src/config';
 import {createPatchedAbi} from '../src/utils/abi';
+import {resolveAgentUri} from '../src/utils/agent_uri';
 import * as identityAbiJson from '../src/abis/identity-registry.abi.json';
 
 dotenv.config();
@@ -38,7 +39,7 @@ dotenv.config();
 const txComputer = new TransactionComputer();
 
 async function main() {
-  console.log('🚀 Starting Manifest Update...');
+  console.log('🚀 Starting On-Chain Agent Update...');
 
   const providerUrl = process.env.MULTIVERSX_API_URL || CONFIG.API_URL;
   const isLocal =
@@ -108,9 +109,19 @@ async function main() {
     abi,
   });
 
-  // ABI: update_agent(new_name, new_uri, new_public_key, metadata?, services?)
-  const newUri =
-    config.manifestUri || `https://agent.molt.bot/${config.agentName}`;
+  // Live pingable HTTP base for on-chain uri — prefer AGENT_URI over IPFS manifestUri.
+  const newUri = resolveAgentUri({
+    agentName: config.agentName,
+    agentUri: (config as {agentUri?: string}).agentUri,
+    manifestUri: config.manifestUri,
+    metadata: config.metadata || [],
+    services: config.services || [],
+  });
+  if (config.manifestUri && newUri === config.manifestUri.replace(/\/$/, '')) {
+    console.warn(
+      '⚠️  On-chain URI is manifestUri (often IPFS). Set AGENT_URI to your live template/public URL.',
+    );
+  }
   const publicKeyHex = senderAddress.toHex();
 
   const metadataType = new StructType('MetadataEntry', [

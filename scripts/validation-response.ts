@@ -37,8 +37,20 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  // Uses custom validtor/oracle PEM if set, otherwise falls back to bot signer for mock
-  const validatorSigner = getSigner(process.env.VALIDATOR_PEM_PATH);
+  // Uses VALIDATOR_PEM_PATH when set; MOCK_VALIDATION=true allows bot signer for local dev.
+  const allowMock = process.env.MOCK_VALIDATION === 'true';
+  const validatorPem = process.env.VALIDATOR_PEM_PATH;
+  if (!validatorPem && !allowMock) {
+    console.error(
+      'VALIDATOR_PEM_PATH is required. Set MOCK_VALIDATION=true to use the bot signer for local dev.',
+    );
+    process.exit(1);
+  }
+  if (!validatorPem && allowMock) {
+    console.warn('MOCK_VALIDATION enabled: using bot signer as validator.');
+  }
+
+  const validatorSigner = getSigner(validatorPem);
   const validatorAddress = Address.newFromBech32(
     validatorSigner.getAddress().toString(),
   );

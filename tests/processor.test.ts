@@ -38,7 +38,7 @@ describe('JobProcessor', () => {
 
     expect(axios.get).toHaveBeenCalledWith(
       url,
-      expect.objectContaining({timeout: expect.any(Number)}),
+      expect.objectContaining({timeout: expect.any(Number), maxRedirects: 0}),
     );
     expect(result).toBe(expectedHash);
   });
@@ -48,8 +48,17 @@ describe('JobProcessor', () => {
 
     await expect(
       processor.process({payload: url, isUrl: true}),
-    ).rejects.toThrow('Domain not allowed');
+    ).rejects.toThrow('Agent URL domain not allowed');
 
-    expect(axios.get).not.toHaveBeenCalledWith(url);
+    expect(axios.get).not.toHaveBeenCalled();
+  });
+
+  test('should throw when URL fetch fails (no silent hash of raw URL)', async () => {
+    const url = 'http://example.com/data';
+    (axios.get as jest.Mock).mockRejectedValue(new Error('network down'));
+
+    await expect(
+      processor.process({payload: url, isUrl: true}),
+    ).rejects.toThrow('network down');
   });
 });

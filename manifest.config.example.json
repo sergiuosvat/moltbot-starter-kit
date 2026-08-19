@@ -40,25 +40,36 @@
     "oasf": {
         "skills": [
             {
-                "category": "Development",
+                "category": "Code Generation",
                 "items": [
-                    "code_generation",
+                    "code_writing",
                     "code_review"
                 ]
             },
             {
-                "category": "Data",
+                "category": "Data Analysis",
                 "items": [
-                    "data_analysis"
+                    "data_extraction"
+                ]
+            },
+            {
+                "category": "Blockchain Operations",
+                "items": [
+                    "smart_contract_interaction"
                 ]
             }
         ],
         "domains": [
             {
-                "category": "Technology",
+                "category": "Finance & Business",
                 "items": [
-                    "blockchain",
-                    "software_engineering"
+                    "defi"
+                ]
+            },
+            {
+                "category": "Engineering",
+                "items": [
+                    "quality_assurance"
                 ]
             }
         ]

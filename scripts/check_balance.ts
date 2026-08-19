@@ -1,27 +1,30 @@
-import {Address} from '@multiversx/sdk-core';
+/**
+ * Query account EGLD (+ ESDT) balance via getBalance skill.
+ *
+ * Usage: npx ts-node scripts/check_balance.ts
+ */
 import {CONFIG} from '../src/config';
-import {createEntrypoint} from '../src/utils/entrypoint';
-import {getSigner} from '../src/utils/txUtils';
+import {getBalance} from '../src/skills/discovery_skills';
 
 async function main() {
   try {
-    const signer = getSigner();
-    const userAddress = signer.getAddress();
-    const address = new Address(userAddress.bech32());
+    const result = await getBalance();
+    const balanceEgld = BigInt(result.egld) / 1_000_000_000_000_000_000n;
 
-    const entrypoint = createEntrypoint();
-    const provider = entrypoint.createNetworkProvider();
-    const account = await provider.getAccount(address);
-
-    const balanceEgld =
-      BigInt(account.balance.toString()) / 1_000_000_000_000_000_000n;
-
-    console.log(`\n🔍 Checking Balance for: ${address.toBech32()}`);
+    console.log(`\n🔍 Checking Balance for: ${result.address}`);
     console.log(`🌍 Network: ${CONFIG.API_URL}`);
     console.log(`💰 Balance: ${balanceEgld.toString()} EGLD`);
-    console.log(`🔢 Nonce: ${account.nonce}`);
+    console.log(`🔢 Nonce: ${result.nonce}`);
+
+    if (result.tokens.length > 0) {
+      console.log(`🪙 Tokens (${result.tokens.length}):`);
+      for (const token of result.tokens) {
+        console.log(`   - ${token.name || token.identifier}: ${token.balance}`);
+      }
+    }
   } catch (error) {
     console.error('Error checking balance:', (error as Error).message);
+    process.exit(1);
   }
 }
 

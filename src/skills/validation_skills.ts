@@ -14,6 +14,7 @@ import {
   createPatchedAbi,
   discoverRelayerAddress,
   signAndSend,
+  signAndRelay,
   withRelayer,
 } from '../chain';
 import * as validationAbiJson from '../abis/validation-registry.abi.json';
@@ -34,6 +35,10 @@ export interface SubmitProofParams {
   jobId: string;
   proofHash: string;
   useRelayer?: boolean;
+  /** Explicit relayer (preferred when caller already discovered it). */
+  relayerUrl?: string;
+  relayerAddress?: string;
+  gasPrice?: string;
 }
 
 export interface JobData {
@@ -106,14 +111,40 @@ export async function submitProof(params: SubmitProofParams): Promise<string> {
     ],
   });
 
-  if (params.useRelayer) {
-    const relayerBech = await discoverRelayerAddress(senderAddress);
-    if (relayerBech) {
-      withRelayer(tx, Address.newFromBech32(relayerBech));
-    }
+  if (params.gasPrice) {
+    tx.gasPrice = BigInt(params.gasPrice);
   }
 
-  const txHash = await signAndSend(tx, signer, senderAddress, provider);
+  const relayerUrl =
+    params.relayerUrl ||
+    (params.useRelayer ? CONFIG.PROVIDERS.RELAYER_URL : undefined);
+  let relayerAddress = params.relayerAddress;
+
+  if (!relayerAddress && params.useRelayer) {
+    relayerAddress = (await discoverRelayerAddress(senderAddress)) || undefined;
+  }
+
+  if (relayerAddress) {
+    withRelayer(tx, Address.newFromBech32(relayerAddress));
+  }
+
+  let txHash: string;
+  if (relayerUrl && relayerAddress) {
+    txHash = await signAndRelay(
+      tx,
+      signer,
+      senderAddress,
+      provider,
+      relayerUrl,
+    );
+  } else if (params.useRelayer) {
+    throw new Error(
+      'useRelayer=true but relayer URL/address unavailable; set MULTIVERSX_RELAYER_URL or pass relayerUrl/relayerAddress',
+    );
+  } else {
+    txHash = await signAndSend(tx, signer, senderAddress, provider);
+  }
+
   logger.info(`submit_proof tx: ${txHash}`);
   return txHash;
 }

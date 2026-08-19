@@ -3,6 +3,7 @@ import {ApiNetworkProvider} from '@multiversx/sdk-network-providers';
 import {UserSigner} from '@multiversx/sdk-wallet';
 import axios from 'axios';
 import {CONFIG} from '../config';
+import {PoWSolver} from '../pow';
 
 const txComputer = new TransactionComputer();
 
@@ -53,6 +54,7 @@ export async function signAndSend(
  * "Stamp nonce → sign → relay" sequence. Returns the tx hash.
  *
  * Caller is responsible for having already called `withRelayer(tx, relayerAddr)`.
+ * Pass `challengeNonce` when the relayer requires PoW (e.g. registration).
  */
 export async function signAndRelay(
   tx: Transaction,
@@ -60,13 +62,34 @@ export async function signAndRelay(
   sender: Address,
   provider: ApiNetworkProvider,
   relayerUrl: string,
+  options?: {challengeNonce?: string},
 ): Promise<string> {
   await applyFreshNonce(tx, sender, provider);
   await sign(tx, signer);
+  const body: {
+    transaction: ReturnType<Transaction['toPlainObject']>;
+    challengeNonce?: string;
+  } = {transaction: tx.toPlainObject()};
+  if (options?.challengeNonce !== undefined) {
+    body.challengeNonce = options.challengeNonce;
+  }
+  const res = await axios.post(`${relayerUrl}/relay`, body, {
+    timeout: CONFIG.REQUEST_TIMEOUT,
+  });
+  return res.data.txHash;
+}
+
+/**
+ * Fetch a relayer PoW challenge and return the solved nonce string.
+ */
+export async function solveRelayerChallenge(
+  relayerUrl: string,
+  address: string,
+): Promise<string> {
   const res = await axios.post(
-    `${relayerUrl}/relay`,
-    {transaction: tx.toPlainObject()},
+    `${relayerUrl.replace(/\/$/, '')}/challenge`,
+    {address},
     {timeout: CONFIG.REQUEST_TIMEOUT},
   );
-  return res.data.txHash;
+  return new PoWSolver().solve(res.data);
 }

@@ -17,12 +17,11 @@ export interface McpBridgeOptions {
 const TOOL_GET_AGENT_REPUTATION = 'get_agent_reputation';
 const TOOL_GET_GAS_PRICE = 'get_gas_price';
 
-const DEFAULT_REPUTATION = 50;
-const DEFAULT_GAS_PRICE = '1000000000';
 const DEFAULT_STDIO_COMMAND = 'npx';
 const DEFAULT_STDIO_ARGS = ['-y', '@multiversx/mcp-server'];
 const DEFAULT_RETRY_DELAY_MS = 200;
 const DEFAULT_MCP_MAX_ATTEMPTS = 3;
+const DEFAULT_MCP_MAX_CONCURRENT = 10;
 
 export class McpBridge {
   private readonly options: McpBridgeOptions;
@@ -40,6 +39,9 @@ export class McpBridge {
 
   private logger = new Logger('McpBridge');
 
+  private activeCalls = 0;
+  private readonly maxConcurrent: number;
+
   /**
    * @param urlOrOptions HTTP base URL (legacy) or full bridge options.
    */
@@ -49,9 +51,13 @@ export class McpBridge {
     } else {
       this.options = urlOrOptions ?? {};
     }
+    this.maxConcurrent = parseInt(
+      process.env.MCP_MAX_CONCURRENT || String(DEFAULT_MCP_MAX_CONCURRENT),
+      10,
+    );
   }
 
-  async getAgentReputation(nonce: number): Promise<number> {
+  async getAgentReputation(nonce: number): Promise<number | null> {
     try {
       const result = await this.callToolWithRetry(TOOL_GET_AGENT_REPUTATION, {
         nonce,
@@ -64,13 +70,13 @@ export class McpBridge {
         throw new Error('get_agent_reputation missing score');
       }
       return score;
-    } catch {
-      this.logger.warn('Failed to fetch reputation, returning default 50');
-      return DEFAULT_REPUTATION;
+    } catch (err) {
+      this.logger.warn(`Failed to fetch reputation: ${(err as Error).message}`);
+      return null;
     }
   }
 
-  async getGasPrice(): Promise<string> {
+  async getGasPrice(): Promise<string | null> {
     try {
       const result = await this.callToolWithRetry(TOOL_GET_GAS_PRICE, {});
       if (result.isError) {
@@ -83,9 +89,35 @@ export class McpBridge {
         throw new Error('get_gas_price missing gasPrice');
       }
       return gasPrice;
-    } catch {
-      return DEFAULT_GAS_PRICE;
+    } catch (err) {
+      this.logger.warn(`Failed to fetch gas price: ${(err as Error).message}`);
+      return null;
     }
+  }
+
+  /**
+   * Call an arbitrary MCP tool (used when payment meta.mcpTool is set).
+   */
+  async callTool(
+    name: string,
+    args: Record<string, unknown> = {},
+  ): Promise<unknown> {
+    const result = await this.callToolWithRetry(name, args);
+    if (result.isError) {
+      throw new Error(`MCP tool ${name} returned isError`);
+    }
+    return result;
+  }
+
+  /** Normalize a tool result into a string suitable for hashing / logging. */
+  formatToolResult(result: unknown): string {
+    const structured = extractStructured(result);
+    if (structured) {
+      return JSON.stringify(structured);
+    }
+    const text = extractTextFromToolResult(result);
+    if (text) return text;
+    return JSON.stringify(result ?? {});
   }
 
   async verifyRequiredTools(): Promise<boolean> {
@@ -180,30 +212,41 @@ export class McpBridge {
     isError?: boolean;
     [key: string]: unknown;
   }> {
-    const attempts = DEFAULT_MCP_MAX_ATTEMPTS;
-    for (let attempt = 1; attempt <= attempts; attempt++) {
-      try {
-        const client = await this.ensureConnected();
-        const result = await withTimeout(
-          client.callTool({
-            name,
-            arguments: args,
-          }),
-          CONFIG.REQUEST_TIMEOUT,
-          `MCP call timeout for ${name}`,
-        );
-        return result as {isError?: boolean; [key: string]: unknown};
-      } catch (err) {
-        this.connectPromise = null;
-        this.client = null;
-        this.transport = null;
-        if (attempt >= attempts) {
-          throw err;
-        }
-        await sleep(DEFAULT_RETRY_DELAY_MS);
-      }
+    if (this.activeCalls >= this.maxConcurrent) {
+      throw new Error(
+        `MCP concurrency limit reached (max=${this.maxConcurrent}). Try again later.`,
+      );
     }
-    throw new Error(`MCP call failed for ${name}`);
+
+    this.activeCalls++;
+    try {
+      const attempts = DEFAULT_MCP_MAX_ATTEMPTS;
+      for (let attempt = 1; attempt <= attempts; attempt++) {
+        try {
+          const client = await this.ensureConnected();
+          const result = await withTimeout(
+            client.callTool({
+              name,
+              arguments: args,
+            }),
+            CONFIG.REQUEST_TIMEOUT,
+            `MCP call timeout for ${name}`,
+          );
+          return result as {isError?: boolean; [key: string]: unknown};
+        } catch (err) {
+          this.connectPromise = null;
+          this.client = null;
+          this.transport = null;
+          if (attempt >= attempts) {
+            throw err;
+          }
+          await sleep(DEFAULT_RETRY_DELAY_MS);
+        }
+      }
+      throw new Error(`MCP call failed for ${name}`);
+    } finally {
+      this.activeCalls--;
+    }
   }
 }
 

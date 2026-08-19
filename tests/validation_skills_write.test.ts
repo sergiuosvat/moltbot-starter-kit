@@ -13,6 +13,7 @@ const mockCreateEntrypoint = jest.fn(() => ({
 const mockCreatePatchedAbi = jest.fn(() => ({}));
 const mockDiscoverRelayerAddress = jest.fn();
 const mockSignAndSend = jest.fn();
+const mockSignAndRelay = jest.fn();
 const mockWithRelayer = jest.fn();
 
 jest.mock('../src/chain', () => ({
@@ -24,6 +25,7 @@ jest.mock('../src/chain', () => ({
   discoverRelayerAddress: (...args: unknown[]) =>
     mockDiscoverRelayerAddress(...args),
   signAndSend: (...args: unknown[]) => mockSignAndSend(...args),
+  signAndRelay: (...args: unknown[]) => mockSignAndRelay(...args),
   withRelayer: (...args: unknown[]) => mockWithRelayer(...args),
 }));
 
@@ -43,6 +45,7 @@ describe('validation_skills write paths', () => {
     mockCreateProvider.mockReturnValue({provider: true});
     mockCreateTransactionForExecute.mockResolvedValue(tx);
     mockSignAndSend.mockResolvedValue('tx-hash');
+    mockSignAndRelay.mockResolvedValue('relay-tx-hash');
     mockDiscoverRelayerAddress.mockResolvedValue(
       'erd1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq6gq4hu',
     );
@@ -75,9 +78,16 @@ describe('validation_skills write paths', () => {
   });
 
   it('submitProof uses relayer when enabled and discovered', async () => {
-    await submitProof({jobId: 'job-1', proofHash: 'abcd', useRelayer: true});
+    const hash = await submitProof({
+      jobId: 'job-1',
+      proofHash: 'abcd',
+      useRelayer: true,
+    });
 
+    expect(hash).toBe('relay-tx-hash');
     expect(mockDiscoverRelayerAddress).toHaveBeenCalledWith(senderAddress);
     expect(mockWithRelayer).toHaveBeenCalledWith(tx, expect.anything());
+    expect(mockSignAndRelay).toHaveBeenCalled();
+    expect(mockSignAndSend).not.toHaveBeenCalled();
   });
 });

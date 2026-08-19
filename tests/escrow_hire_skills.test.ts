@@ -1,5 +1,5 @@
 /**
- * Unit tests for Hire Skills (composite)
+ * Unit tests for Escrow Hire Skills (composite: init_job + deposit)
  */
 
 // Mock the dependencies
@@ -14,19 +14,23 @@ jest.mock('../src/skills/escrow_skills', () => ({
   deposit: (...args: unknown[]) => mockDeposit(...args),
 }));
 
-import {hireAgent} from '../src/skills/hire_skills';
+jest.mock('../src/utils/wait_for_tx', () => ({
+  requireTxSuccess: jest.fn().mockResolvedValue(undefined),
+}));
 
-describe('Hire Skills', () => {
+import {hireWithEscrow} from '../src/skills/escrow_hire_skills';
+
+describe('Escrow Hire Skills', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  describe('hireAgent', () => {
+  describe('hireWithEscrow', () => {
     it('should call initJob then deposit', async () => {
       mockInitJob.mockResolvedValueOnce('init-tx-hash');
       mockDeposit.mockResolvedValueOnce('deposit-tx-hash');
 
-      const result = await hireAgent({
+      const result = await hireWithEscrow({
         jobId: 'job-1',
         agentNonce: 1,
         agentAddress:
@@ -44,7 +48,7 @@ describe('Hire Skills', () => {
       mockInitJob.mockResolvedValueOnce('tx1');
       mockDeposit.mockResolvedValueOnce('tx2');
 
-      await hireAgent({
+      await hireWithEscrow({
         jobId: 'my-job',
         agentNonce: 5,
         agentAddress:
@@ -72,7 +76,7 @@ describe('Hire Skills', () => {
       const agentAddr =
         'erd1qqqqqqqqqqqqqqqpgqhe8t5jewej70zupmh44jurgn29psua5l2jps3ntjj3';
 
-      await hireAgent({
+      await hireWithEscrow({
         jobId: 'my-job',
         agentNonce: 5,
         agentAddress: agentAddr,
@@ -95,7 +99,7 @@ describe('Hire Skills', () => {
       mockInitJob.mockRejectedValueOnce(new Error('init failed'));
 
       await expect(
-        hireAgent({
+        hireWithEscrow({
           jobId: 'job-1',
           agentNonce: 1,
           agentAddress:

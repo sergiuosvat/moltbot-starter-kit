@@ -53,6 +53,29 @@ describe('Manifest Skills', () => {
       expect(m.contact?.email).toBe('agent@example.com');
     });
 
+    it('should include offerings when provided on services', () => {
+      const m = buildManifest({
+        name: 'OfferAgent',
+        description: 'With offerings',
+        services: [
+          {
+            name: 'MCP',
+            endpoint: 'https://agent.example.com/mcp',
+            offerings: [
+              {
+                serviceId: 1,
+                name: 'Review',
+                description: 'Code review',
+              },
+            ],
+          },
+        ],
+      });
+
+      expect(m.services[0].offerings).toHaveLength(1);
+      expect(m.services[0].offerings?.[0].serviceId).toBe(1);
+    });
+
     it('should throw on invalid OASF skills', () => {
       expect(() =>
         buildManifest({

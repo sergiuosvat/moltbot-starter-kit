@@ -26,7 +26,7 @@ async function main(): Promise<void> {
     );
     console.error('  jobId: 64-char hex string');
     console.error(
-      '  validatorAddress: erd1... (optional — uses agent for mock if unset)',
+      '  validatorAddress: erd1... (required unless MOCK_VALIDATION=true)',
     );
     process.exit(1);
   }
@@ -36,9 +36,18 @@ async function main(): Promise<void> {
     agentSigner.getAddress().toString(),
   );
 
-  // VALID_ADDRESS = oracle/validator to request from; when unset, use agent (mock)
+  const allowMock = process.env.MOCK_VALIDATION === 'true';
   if (!validatorAddress || !validatorAddress.startsWith('erd1')) {
+    if (!allowMock) {
+      console.error(
+        'VALIDATOR_ADDRESS is required. Set MOCK_VALIDATION=true to use the agent address for local dev.',
+      );
+      process.exit(1);
+    }
     validatorAddress = agentAddress.toString();
+    console.warn(
+      'MOCK_VALIDATION enabled: using agent address as validator oracle.',
+    );
   }
 
   console.log(`Requesting validation for job: ${jobId}`);

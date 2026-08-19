@@ -1,15 +1,15 @@
 /**
  * Identity Skills — register, update, query agent identity on the Identity Registry
- *
- * Uses SDK v15 patterns via the centralized `chain/` layer:
- *   - signer & provider come from chain/* helpers
- *   - "fetch nonce → sign → send/relay" is chain.signAndSend / signAndRelay
- *   - ABI patching is chain.createPatchedAbi
  */
-import {Address, VariadicValue} from '@multiversx/sdk-core';
+import {Address} from '@multiversx/sdk-core';
 
 import {CONFIG} from '../config';
 import {Logger} from '../utils/logger';
+import {
+  encodeMetadataVariadic,
+  encodeServiceConfigsVariadic,
+  type ServiceConfigInput,
+} from '../utils/identity_encoding';
 import {
   loadSignerWithAddress,
   createProvider,
@@ -17,13 +17,13 @@ import {
   createPatchedAbi,
   discoverRelayerAddress,
   signAndSend,
+  signAndRelay,
+  solveRelayerChallenge,
   withRelayer,
 } from '../chain';
 import * as identityAbiJson from '../abis/identity-registry.abi.json';
 
 const logger = new Logger('IdentitySkills');
-
-// ─── Types ─────────────────────────────────────────────────────────────────────
 
 export interface AgentDetails {
   name: string;
@@ -37,7 +37,11 @@ export interface RegisterAgentParams {
   name: string;
   uri: string;
   metadata?: Array<{key: string; value: string}>;
+  services?: ServiceConfigInput[];
   useRelayer?: boolean;
+  /** Explicit relayer (preferred when caller already discovered it). */
+  relayerUrl?: string;
+  relayerAddress?: string;
 }
 
 export interface SetMetadataParams {
@@ -45,7 +49,10 @@ export interface SetMetadataParams {
   entries: Array<{key: string; value: string}>;
 }
 
-// ─── register_agent ────────────────────────────────────────────────────────────
+export interface SetServiceConfigsParams {
+  agentNonce: number;
+  services: ServiceConfigInput[];
+}
 
 export async function registerAgent(
   params: RegisterAgentParams,
@@ -69,24 +76,49 @@ export async function registerAgent(
       Buffer.from(params.name),
       Buffer.from(params.uri),
       Buffer.from(senderAddress.getPublicKey()),
-      VariadicValue.fromItemsCounted(), // metadata (empty for now)
-      VariadicValue.fromItemsCounted(), // services (empty for now)
+      encodeMetadataVariadic(params.metadata ?? []),
+      encodeServiceConfigsVariadic(params.services ?? []),
     ],
   });
 
-  if (params.useRelayer) {
-    const relayerBech = await discoverRelayerAddress(senderAddress);
-    if (relayerBech) {
-      withRelayer(tx, Address.newFromBech32(relayerBech));
-    }
+  const relayerUrl =
+    params.relayerUrl ||
+    (params.useRelayer ? CONFIG.PROVIDERS.RELAYER_URL : undefined);
+  let relayerAddress = params.relayerAddress;
+
+  if (!relayerAddress && params.useRelayer) {
+    relayerAddress = (await discoverRelayerAddress(senderAddress)) || undefined;
   }
 
-  const txHash = await signAndSend(tx, signer, senderAddress, provider);
+  if (relayerAddress) {
+    withRelayer(tx, Address.newFromBech32(relayerAddress));
+  }
+
+  let txHash: string;
+  if (relayerUrl && relayerAddress) {
+    const challengeNonce = await solveRelayerChallenge(
+      relayerUrl,
+      senderAddress.toBech32(),
+    );
+    txHash = await signAndRelay(
+      tx,
+      signer,
+      senderAddress,
+      provider,
+      relayerUrl,
+      {challengeNonce},
+    );
+  } else if (params.useRelayer) {
+    throw new Error(
+      'useRelayer=true but relayer URL/address unavailable; set MULTIVERSX_RELAYER_URL or pass relayerUrl/relayerAddress',
+    );
+  } else {
+    txHash = await signAndSend(tx, signer, senderAddress, provider);
+  }
+
   logger.info(`Registration tx: ${txHash}`);
   return txHash;
 }
-
-// ─── get_agent ─────────────────────────────────────────────────────────────────
 
 export async function getAgent(
   agentNonce: number,
@@ -113,8 +145,6 @@ export async function getAgent(
   }
 }
 
-// ─── set_metadata ──────────────────────────────────────────────────────────────
-
 export async function setMetadata(params: SetMetadataParams): Promise<string> {
   logger.info(
     `Setting ${params.entries.length} metadata entries for agent #${params.agentNonce}`,
@@ -134,12 +164,41 @@ export async function setMetadata(params: SetMetadataParams): Promise<string> {
     gasLimit: CONFIG.GAS_LIMITS.UPDATE,
     arguments: [
       BigInt(params.agentNonce),
-      VariadicValue.fromItemsCounted(), // metadata
-      VariadicValue.fromItemsCounted(), // services
+      encodeMetadataVariadic(params.entries),
     ],
   });
 
   const txHash = await signAndSend(tx, signer, senderAddress, provider);
   logger.info(`Metadata tx: ${txHash}`);
+  return txHash;
+}
+
+export async function setServiceConfigs(
+  params: SetServiceConfigsParams,
+): Promise<string> {
+  logger.info(
+    `Setting ${params.services.length} service configs for agent #${params.agentNonce}`,
+  );
+
+  const {signer, senderAddress} = await loadSignerWithAddress();
+  const provider = createProvider('moltbot-skills');
+
+  const entrypoint = createEntrypoint();
+  const abi = createPatchedAbi(identityAbiJson);
+  const factory = entrypoint.createSmartContractTransactionsFactory(abi);
+  const registry = Address.newFromBech32(CONFIG.ADDRESSES.IDENTITY_REGISTRY);
+
+  const tx = await factory.createTransactionForExecute(senderAddress, {
+    contract: registry,
+    function: 'set_service_configs',
+    gasLimit: CONFIG.GAS_LIMITS.UPDATE,
+    arguments: [
+      BigInt(params.agentNonce),
+      encodeServiceConfigsVariadic(params.services),
+    ],
+  });
+
+  const txHash = await signAndSend(tx, signer, senderAddress, provider);
+  logger.info(`Service configs tx: ${txHash}`);
   return txHash;
 }

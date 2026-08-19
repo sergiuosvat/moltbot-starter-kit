@@ -13,10 +13,20 @@ import {
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
+export interface ServiceOffering {
+  serviceId: number;
+  name: string;
+  description: string;
+  sla?: number;
+  requirements?: Record<string, unknown>;
+  deliverables?: Record<string, unknown>;
+}
+
 export interface ManifestService {
   name: string;
   endpoint: string;
   version?: string;
+  offerings?: ServiceOffering[];
 }
 
 export interface ManifestContact {

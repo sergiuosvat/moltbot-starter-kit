@@ -13,6 +13,7 @@ export {
   withRelayer,
   signAndSend,
   signAndRelay,
+  solveRelayerChallenge,
 } from './tx';
 export {discoverRelayerAddress} from './relayer';
 export {createPatchedAbi} from '../utils/abi';

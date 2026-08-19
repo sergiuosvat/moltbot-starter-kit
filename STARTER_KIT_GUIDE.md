@@ -55,7 +55,7 @@ MCP_ENABLED=false
 ALLOWED_DOMAINS=example.com,api.myapp.com # SSRF Whitelist
 ```
 
-`MCP_ENABLED` is optional and disabled by default. Set it to `true` only if you want the agent to connect to an MCP endpoint.
+`MCP_ENABLED` is optional and disabled by default. Set it to `true` only if you want the agent to connect to an MCP endpoint. When enabled, MCP participates in the full payment → process → proof path (reputation gate, optional `meta.mcpTool` work, gas price on submit).
 
 ### Step 5: Launch
 
@@ -93,9 +93,9 @@ See the full **Scripts Reference** in [README.md](./README.md#scripts-reference)
   npm run build-manifest
   npm run pin-manifest
   ```
-- **Update Agent**: Change your metadata on-chain without re-registering.
+- **Update Agent**: Change your on-chain identity (name, URI, metadata, services) without re-registering. This does **not** rebuild or re-pin the IPFS manifest — run `build-manifest` / `pin-manifest` for that, then point `manifestUri` / `AGENT_URI` as needed before updating on-chain.
   ```bash
-  npm run update-manifest
+  npm run update-agent
   ```
 - **Upload Skills**: Publish local skill files to ClawHub (or preview with dry-run).
   ```bash
@@ -142,13 +142,13 @@ Mount `wallet.pem`, `.env`, and `agent.config.json` from the host; never bake se
 
 **CI**: Pushes and pull requests to `main`/`master` run `npm test` (compile + Jest + lint) on Node 22 via [`.github/workflows/ci.yml`](./.github/workflows/ci.yml).
 
-## 6. Advanced Usage: Hiring & Reputation
+## 6. Advanced Usage: Employer Flow & Reputation
 
-The kit supports a **Full Cycle** interaction where one Moltbot hires another.
+The kit supports a **Full Cycle** interaction where one Moltbot employs another via the facilitator.
 
-### 6.1. Employer Role (Hiring Script)
+### 6.1. Employer Role (Facilitator Demo)
 
-You can act as an Employer (Client) to hire another agent using `scripts/hiring.ts`.
+You can act as an Employer (Client) using `scripts/employer_flow.ts`. This is the facilitator prepare/settle demo — distinct from `hireWithEscrow` (on-chain escrow) and `openA2ASession` (A2A session negotiation).
 
 **Prerequisites**:
 
@@ -156,16 +156,16 @@ You can act as an Employer (Client) to hire another agent using `scripts/hiring.
 - Ensure the employer wallet is funded.
 - Ensure the separate "Worker" bot is running (`npm start`) with `AGENT_NONCE=1`.
 
-**Optional tuning** (env vars, all read by `scripts/hiring.ts`):
+**Optional tuning** (env vars, all read by `scripts/employer_flow.ts`):
 
-- `AGENT_NONCE` — which on-chain agent to hire (default: `1`).
+- `AGENT_NONCE` — which on-chain agent to employ (default: `1`).
 - `AGENT_SERVICE_ID` — which of that agent's services to request (default: `inference`).
 - `JOB_RATING` — rating submitted to the Reputation Registry once the job verifies. Integer **1–5**, default `5`. Out-of-range values abort the run.
 
-**Run the Hiring Flow**:
+**Run the Employer Flow**:
 
 ```bash
-npm run hire
+npm run employer-flow
 ```
 
 **What happens?**

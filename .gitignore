@@ -8,6 +8,13 @@ wallet.pem
 agent.config.json
 manifest.config.json
 .relayer_cache.json
+.moltbot/
+*.db
+*.db-wal
+*.db-shm
 .DS_Store
 downloads
 *.tsbuildinfo
+# Never commit real secrets
+*.key
+*.secret

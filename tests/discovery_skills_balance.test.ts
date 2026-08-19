@@ -26,7 +26,7 @@ const mockedAxios = axios as jest.Mocked<typeof axios>;
 describe('discovery_skills getBalance', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockGetAccount.mockResolvedValue({balance: 123n});
+    mockGetAccount.mockResolvedValue({balance: 123n, nonce: 7});
     mockedAxios.get.mockResolvedValue({data: []} as any);
   });
 
@@ -39,6 +39,7 @@ describe('discovery_skills getBalance', () => {
 
     expect(result.address).toBe('erd1provided');
     expect(result.egld).toBe('123');
+    expect(result.nonce).toBe(7);
     expect(result.tokens).toHaveLength(1);
   });
 

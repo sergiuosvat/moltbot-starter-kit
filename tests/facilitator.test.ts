@@ -125,6 +125,106 @@ describe('Facilitator', () => {
     expect(result).toEqual({txHash: 'abc'});
   });
 
+  test('verifyPayment requires jobId and proof', async () => {
+    await expect(
+      facilitator.verifyPayment({amount: '1', token: 'EGLD'}),
+    ).rejects.toThrow('missing meta.jobId');
+
+    await expect(
+      facilitator.verifyPayment({
+        amount: '1',
+        token: 'EGLD',
+        meta: {jobId: 'job-1'},
+      }),
+    ).rejects.toThrow('missing proof');
+  });
+
+  test('verifyPayment accepts settled facilitator lookup', async () => {
+    (axios.get as jest.Mock).mockResolvedValueOnce({
+      status: 200,
+      data: {status: 'settled'},
+    });
+
+    const jobId = await facilitator.verifyPayment({
+      amount: '1',
+      token: 'EGLD',
+      txHash: '0xabc',
+      meta: {jobId: 'job-verified'},
+    });
+
+    expect(jobId).toBe('job-verified');
+    expect(axios.get).toHaveBeenCalledWith(
+      'http://mock-facilitator.com/payments/0xabc',
+      expect.any(Object),
+    );
+  });
+
+  test('verifyPayment rejects missing settlement status on 200', async () => {
+    (axios.get as jest.Mock).mockResolvedValueOnce({
+      status: 200,
+      data: {},
+    });
+
+    await expect(
+      facilitator.verifyPayment({
+        amount: '1',
+        token: 'EGLD',
+        txHash: '0xabc',
+        meta: {jobId: 'job-no-status'},
+      }),
+    ).rejects.toThrow('missing settlement status');
+  });
+
+  test('verifyPayment rejects 404 even when event claims settled', async () => {
+    (axios.get as jest.Mock).mockResolvedValueOnce({
+      status: 404,
+      data: {},
+    });
+
+    await expect(
+      facilitator.verifyPayment({
+        amount: '1',
+        token: 'EGLD',
+        status: 'settled',
+        txHash: '0xabc',
+        meta: {jobId: 'job-404'},
+      }),
+    ).rejects.toThrow('Cannot verify payment with facilitator');
+  });
+
+  test('verifyPayment rejects amount mismatch vs facilitator', async () => {
+    (axios.get as jest.Mock).mockResolvedValueOnce({
+      status: 200,
+      data: {status: 'settled', amount: '999', token: 'EGLD'},
+    });
+
+    await expect(
+      facilitator.verifyPayment({
+        amount: '1',
+        token: 'EGLD',
+        txHash: '0xabc',
+        meta: {jobId: 'job-mismatch'},
+      }),
+    ).rejects.toThrow('amount mismatch');
+  });
+
+  test('acknowledge posts event ack', async () => {
+    (axios.post as jest.Mock).mockResolvedValueOnce({status: 200, data: {}});
+
+    await facilitator.acknowledge({
+      id: 'evt-9',
+      amount: '1',
+      token: 'EGLD',
+      meta: {jobId: 'job-1'},
+    });
+
+    expect(axios.post).toHaveBeenCalledWith(
+      'http://mock-facilitator.com/events/evt-9/ack',
+      {},
+      expect.any(Object),
+    );
+  });
+
   test('should back off polling delay after consecutive failures', async () => {
     const timerSpy = jest.spyOn(global, 'setTimeout');
     (axios.get as jest.Mock).mockRejectedValue(new Error('network down'));

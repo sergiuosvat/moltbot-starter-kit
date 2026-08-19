@@ -40,6 +40,7 @@ export interface TokenBalance {
 export interface BalanceResult {
   address: string;
   egld: string;
+  nonce: number;
   tokens: TokenBalance[];
 }
 
@@ -115,6 +116,7 @@ export async function getBalance(address?: string): Promise<BalanceResult> {
   return {
     address: targetAddress,
     egld: account.balance.toString(),
+    nonce: Number(account.nonce),
     tokens,
   };
 }

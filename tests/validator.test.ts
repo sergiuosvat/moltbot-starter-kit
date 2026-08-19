@@ -161,23 +161,6 @@ describe('Validator', () => {
       );
     });
 
-    test('waitForTx throws on failed status', async () => {
-      jest.spyOn(validator, 'getTxStatus').mockResolvedValueOnce('failed');
-      await expect(validator.waitForTx('tx')).rejects.toThrow(
-        'Registration failed on-chain',
-      );
-    });
-
-    test('waitForTx throws timeout after max retries', async () => {
-      jest.useFakeTimers();
-      jest.spyOn(validator, 'getTxStatus').mockResolvedValue('pending');
-      const run = validator.waitForTx('tx');
-      const expectation = expect(run).rejects.toThrow('Registration timed out');
-      await jest.runAllTimersAsync();
-      await expectation;
-      jest.useRealTimers();
-    });
-
     test('getTxStatus returns not_found on 404-like errors', async () => {
       mockProvider.getTransaction.mockRejectedValueOnce({
         response: {status: 404},

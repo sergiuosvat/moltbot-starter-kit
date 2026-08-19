@@ -1,6 +1,6 @@
 /**
  * Tests verifying that ServiceConfigInput struct mapping works correctly
- * for both register.ts and update_manifest.ts flows.
+ * for both register.ts and update_agent.ts flows.
  *
  * These tests exercise the exact encoding logic used in the scripts,
  * ensuring StructType/Field/Struct construction matches the ABI.
@@ -24,7 +24,7 @@ import {
   BytesValue,
 } from '@multiversx/sdk-core';
 
-// Replicate the struct mapping from register.ts / update_manifest.ts
+// Replicate the struct mapping from register.ts / update_agent.ts
 function buildServiceConfigType(): StructType {
   return new StructType('ServiceConfigInput', [
     new FieldDefinition('service_id', '', new U32Type()),

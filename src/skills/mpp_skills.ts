@@ -4,10 +4,18 @@ import {ApiNetworkProvider} from '@multiversx/sdk-network-providers';
 import {keccak_256} from '@noble/hashes/sha3';
 import {bytesToHex} from '@noble/hashes/utils';
 
+import {CONFIG} from '../config';
+import {createProvider} from '../chain';
+
 export interface AgentSpendingPolicy {
   dailyLimitFiat?: number;
   maxPerTransactionNative: bigint;
   whitelistedCurrencies: string[];
+}
+
+function toEvenHex(value: bigint): string {
+  const hex = value.toString(16);
+  return hex.length % 2 === 0 ? hex : `0${hex}`;
 }
 
 export class MoltbotMppSkill {
@@ -16,9 +24,14 @@ export class MoltbotMppSkill {
   constructor(
     private signer: UserSigner,
     private policy: AgentSpendingPolicy,
-    networkProviderUrl: string,
+    networkProviderUrl?: string,
   ) {
-    this.provider = new ApiNetworkProvider(networkProviderUrl);
+    this.provider = networkProviderUrl
+      ? new ApiNetworkProvider(networkProviderUrl, {
+          clientName: 'moltbot-mpp',
+          timeout: CONFIG.REQUEST_TIMEOUT,
+        })
+      : createProvider('moltbot-mpp');
   }
 
   async attemptPayment(mppChallengeUrl: string): Promise<string> {
@@ -46,7 +59,7 @@ export class MoltbotMppSkill {
 
     const txPayloadStr =
       method === 'transfer' && currency !== 'EGLD'
-        ? `ESDTTransfer@${Buffer.from(currency).toString('hex')}@${amount.toString(16).padStart(16, '0')}`
+        ? `ESDTTransfer@${Buffer.from(currency).toString('hex')}@${toEvenHex(amount)}`
         : '';
 
     const networkConfig = await this.provider.getNetworkConfig();
@@ -72,22 +85,25 @@ export class MoltbotMppSkill {
 
     const txHash = await this.provider.sendTransaction(tx);
 
-    let status = 'pending';
-    while (status === 'pending') {
+    const timeoutMs = 120_000;
+    const start = Date.now();
+    while (Date.now() - start < timeoutMs) {
       await new Promise(r => setTimeout(r, 2000));
       try {
         const txInfo = await this.provider.getTransaction(txHash);
         if (txInfo.status.isSuccessful()) {
-          status = 'success';
-        } else if (txInfo.status.isFailed() || txInfo.status.isInvalid()) {
+          return txHash;
+        }
+        if (txInfo.status.isFailed() || txInfo.status.isInvalid()) {
           throw new Error('Payment transaction failed on chain');
         }
-      } catch {
-        /* ignore fetching delays */
+      } catch (error) {
+        if ((error as Error).message.includes('failed on chain')) throw error;
+        /* ignore fetching delays while pending */
       }
     }
 
-    return txHash;
+    throw new Error(`Payment transaction timed out: ${txHash}`);
   }
 
   /**
@@ -107,7 +123,6 @@ export class MoltbotMppSkill {
     hasher.update(receiverAddr.getPublicKey());
     hasher.update(Buffer.from(token));
 
-    // Nonce as 8 bytes big endian
     const nonceBuf = Buffer.alloc(8);
     nonceBuf.writeBigUInt64BE(BigInt(nonce));
     hasher.update(nonceBuf);
@@ -131,13 +146,11 @@ export class MoltbotMppSkill {
     hasher.update(contract.getPublicKey());
     hasher.update(Buffer.from(channelId, 'hex'));
 
-    // Amount as 32 bytes big endian
     const amountBuf = Buffer.alloc(32);
     const amountHex = amount.toString(16).padStart(64, '0');
     amountBuf.write(amountHex, 'hex');
     hasher.update(amountBuf);
 
-    // Nonce as 8 bytes big endian
     const nonceBuf = Buffer.alloc(8);
     nonceBuf.writeBigUInt64BE(BigInt(nonce));
     hasher.update(nonceBuf);

@@ -31,4 +31,8 @@ RUN chown -R moltbot:moltbot /app
 USER moltbot
 
 # Long-running agent: polls x402 facilitator (no inbound HTTP port).
+# Healthcheck: confirm the process is still running by verifying the PID file.
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+  CMD pgrep -f "node dist/index.js" > /dev/null || exit 1
+
 CMD ["node", "dist/index.js"]

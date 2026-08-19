@@ -1,5 +1,7 @@
 {
+    "_WARNING": "NEVER commit agent.config.json with real keys. Copy this file to agent.config.json (gitignored) and fill in your values.",
     "agentName": "Moltbot",
+    "agentUri": "http://localhost:3000",
     "manifestUri": "",
     "metadata": [
         {

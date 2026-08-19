@@ -1,16 +1,27 @@
 # Moltbot Starter Kit (MultiversX)
 
-> **Production-Ready Autonomous Agent Template** for the MultiversX Agent Economy.
+> **Chain skills + x402 job worker** for the MultiversX agent economy — designed to live inside [mx-openclaw-template-solution](https://github.com/sasurobert/mx-openclaw-template-solution) (public HTTP / OpenClaw), not as a standalone hireable HTTP agent.
 
-A fully functional, hardened implementation of an OpenClaw Agent with a comprehensive skill library for blockchain interactions.
+A hardened skill library and payment→process→proof worker for MultiversX.
 
 ## Features
 
 - ✅ **SDK v15+** — Modern `NetworkEntrypoint`, ABI factories, controllers
 - ✅ **18+ Agent Skills** — Identity, validation, reputation, escrow, x402, ACP, A2A, MPP, analytics, and more
-- ✅ **Production Hardened** — Central config, SSRF guards, retry logic, timeouts
-- ✅ **TDD Verified** — 159 unit tests (38 suites), mocked SDK for offline testing
+- ✅ **Production Hardened** — Central config, SSRF guards, durable job ledger, payment amount binding, retry logic
+- ✅ **TDD Verified** — Unit tests with mocked SDK for offline testing
 - ✅ **OASF Taxonomy** — Official 136 skill + 204 domain IDs for agent registration
+
+## Role in the stack
+
+| Piece | Repo |
+|-------|------|
+| Live agent HTTP / chat / deploy | `mx-openclaw-template-solution` |
+| This worker + chain skills | **moltbot-starter-kit** (you are here) |
+| ACP seller (products/checkout) | `multiversx-acp-adapter` |
+| MultiversX MCP tools | `multiversx-mcp-server` |
+
+Set `AGENT_URI` to your **template public URL** (pingable). Keep `manifestUri` for IPFS metadata.
 
 ## Installation
 
@@ -126,13 +137,13 @@ All skills live in `src/skills/` and are exported from `src/skills/index.ts`:
 | `escrow_skills.ts`         | `deposit`, `release`, `refund`, `getEscrow`              | Escrow fund management                     |
 | `transfer_skills.ts`       | `transfer`, `multiTransfer`                              | EGLD, ESDT, NFT, SFT transfers             |
 | `discovery_skills.ts`      | `discoverAgents`, `getBalance`                           | Agent discovery + balance queries          |
-| `hire_skills.ts`           | `hireAgent`                                              | Composite: init_job + escrow deposit       |
+| `escrow_hire_skills.ts`    | `hireWithEscrow`                                         | Composite: init_job + escrow deposit       |
 | `manifest_skills.ts`       | `buildManifest`, `buildManifestJSON`                     | Registration manifest with OASF validation |
 | `oasf_taxonomy.ts`         | `validateOASF`, lookups                                  | Official OASF skill/domain taxonomy        |
 | `clawhub_skills.ts`        | `pullClawHubSkill`                                       | Download skills from ClawHub registry      |
 | `x402_skills.ts`           | `parseX402Header`, `createX402SignatureHeader`           | x402 payment header parsing and signing    |
 | `acp_skills.ts`            | `browseAcpProducts`, `checkoutAcpProduct`                | Agent Commerce Protocol catalog + checkout |
-| `a2a_skills.ts`            | `pingAgent`, `hireA2A`                                   | Agent-to-agent ping and session hire       |
+| `a2a_skills.ts`            | `pingAgent`, `openA2ASession`                            | Agent-to-agent ping and session open       |
 | `mpp_skills.ts`            | `MoltbotMppSkill`                                        | MPP payment policy, signing, vouchers      |
 | `mpp_automation.ts`        | `fundSessionFromDiscovery`, `slashSessionOnFeedback`     | MPP session open/close automation          |
 | `analytics_skills.ts`      | `getAgentRevenue`, `getAgentSpend`                       | On-chain revenue and spend analytics       |
@@ -178,11 +189,11 @@ All scripts live under `scripts/`. Prefer the `npm run` aliases below; pass extr
 | `build-manifest` | `build_manifest.ts` | Build `manifest.json` from `manifest.config.json` |
 | `pin-manifest` | `pin_manifest.ts` | Pin manifest to IPFS (Pinata) |
 | `register` | `register.ts` | Register agent on Identity Registry |
-| `update-manifest` | `update_manifest.ts` | Update on-chain agent metadata |
+| `update-agent` | `update_agent.ts` | Update on-chain agent (name, URI, metadata, services) |
 | `submit-job-proof` | `submit-job-proof.ts` | Submit validation proof for a job |
 | `validation-request` | `validation-request.ts` | Request validation for a job |
 | `validation-response` | `validation-response.ts` | Submit validation response (score) |
-| `hire` | `hiring.ts` | Full employer hire + feedback flow |
+| `employer-flow` | `employer_flow.ts` | Facilitator employer demo: prepare → settle → feedback |
 | `generate-wallet` | `generate_wallet.ts` | Create `wallet.pem` |
 | `check-balance` | `check_balance.ts` | Query account balance |
 | `fund` | `fund.ts` | Send EGLD from a PEM wallet |
@@ -190,9 +201,7 @@ All scripts live under `scripts/`. Prefer the `npm run` aliases below; pass extr
 | `pull-skill` | `pull_skill.ts` | Download a skill from ClawHub |
 | `upload-skill` | `upload_skill.ts` | Upload a skill to ClawHub |
 | `sign-tx` | `sign_tx.ts` | Sign a generic transaction |
-| `sign-x402` | `sign_x402.ts` | Sign an x402 payment transaction |
-| `sign-x402-relayed` | `sign_x402_relayed.ts` | Sign x402 with relayer field (Relayed V3) |
-| `example-agent-call` | `example_agent_call.ts` | Ping an agent endpoint (dev helper) |
+| `sign-x402` | `sign_x402.ts` | Sign an x402 payment tx (`--relayer <addr>` for Relayed V3) |
 
 Examples:
 
@@ -214,7 +223,9 @@ every value has a sensible devnet default in `src/config.ts`.
 MCP integration is optional:
 
 - set `MCP_ENABLED=true` to turn it on (default is disabled),
-- use `MULTIVERSX_MCP_URL` for the HTTP MCP endpoint.
+- use `MULTIVERSX_MCP_URL` for the HTTP MCP endpoint,
+- set `MCP_ALLOWED_TOOLS` (comma list or `*`) before using `meta.mcpTool`,
+- when enabled, the job loop uses MCP for reputation gating (`meta.agentNonce` + `MCP_MIN_REPUTATION`), allowlisted tool processing, and gas price on proof submit.
 
 ## Docker
 

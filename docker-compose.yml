@@ -1,0 +1,15 @@
+services:
+  moltbot:
+    build: .
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      # Persist the job store across container restarts
+      - moltbot_data:/app/.moltbot
+    environment:
+      NODE_ENV: production
+      JOB_STORE_PATH: /app/.moltbot/jobs.json
+
+volumes:
+  moltbot_data:

@@ -101,4 +101,32 @@ describe('chain/tx helpers', () => {
       expect.objectContaining({timeout: expect.any(Number)}),
     );
   });
+
+  it('signAndRelay includes challengeNonce when provided', async () => {
+    const tx: any = {toPlainObject: jest.fn(() => ({foo: 'bar'}))};
+    const signer: any = {sign: jest.fn().mockResolvedValue(Buffer.from('sig'))};
+    const sender: any = {toBech32: () => 'erd1sender'};
+    const provider: any = {
+      getAccount: jest.fn().mockResolvedValue({nonce: 3}),
+    };
+    mockedAxios.post.mockResolvedValueOnce({
+      data: {txHash: 'relayed-pow'},
+    } as any);
+
+    const hash = await signAndRelay(
+      tx,
+      signer,
+      sender,
+      provider,
+      'http://relayer.local',
+      {challengeNonce: '99'},
+    );
+
+    expect(hash).toBe('relayed-pow');
+    expect(mockedAxios.post).toHaveBeenCalledWith(
+      'http://relayer.local/relay',
+      {transaction: {foo: 'bar'}, challengeNonce: '99'},
+      expect.objectContaining({timeout: expect.any(Number)}),
+    );
+  });
 });

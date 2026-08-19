@@ -10,9 +10,11 @@ export {
   registerAgent,
   getAgent,
   setMetadata,
+  setServiceConfigs,
   type AgentDetails,
   type RegisterAgentParams,
   type SetMetadataParams,
+  type SetServiceConfigsParams,
 } from './identity_skills';
 
 // Validation
@@ -63,8 +65,12 @@ export {
   type TokenBalance,
 } from './discovery_skills';
 
-// Hiring (composite)
-export {hireAgent, type HireAgentParams, type HireResult} from './hire_skills';
+// Escrow hire (composite: init_job + deposit)
+export {
+  hireWithEscrow,
+  type HireWithEscrowParams,
+  type HireWithEscrowResult,
+} from './escrow_hire_skills';
 
 // Manifest
 export {
@@ -73,6 +79,7 @@ export {
   type ManifestConfig,
   type AgentManifest,
   type ManifestService,
+  type ServiceOffering,
   type ManifestContact,
 } from './manifest_skills';
 
@@ -108,11 +115,32 @@ export {
 export {
   browseAcpProducts,
   checkoutAcpProduct,
+  AcpError,
+  isAcpError,
+  negotiateAcpJob,
+  createAcpCheckoutSession,
+  updateAcpCheckoutSession,
+  getAcpCheckoutSession,
+  completeAcpCheckoutSession,
+  cancelAcpCheckoutSession,
+  delegateAcpPayment,
+  captureAcpPayment,
+  mapCheckoutResponse,
   type AcpProduct,
   type AcpCheckoutPayload,
 } from './acp_skills';
 
-export {pingAgent, hireA2A, type A2ANegotiationResult} from './a2a_skills';
+export {
+  pingAgent,
+  pingAgentUri,
+  openA2ASession,
+  authenticateA2A,
+  authenticatedA2ARequest,
+  findAgentByOwner,
+  getAgentPricing,
+  type A2ANegotiationResult,
+  type AgentOwnerMatch,
+} from './a2a_skills';
 
 export {getAgentRevenue, getAgentSpend} from './analytics_skills';
 

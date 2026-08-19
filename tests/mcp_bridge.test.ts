@@ -82,12 +82,12 @@ describe('McpBridge', () => {
     });
   });
 
-  test('falls back to defaults on tool failures', async () => {
+  test('returns null on tool failures', async () => {
     mockCallTool.mockRejectedValue(new Error('transport down'));
     const bridge = new McpBridge('http://localhost:3000/mcp');
 
-    await expect(bridge.getAgentReputation(1)).resolves.toBe(50);
-    await expect(bridge.getGasPrice()).resolves.toBe('1000000000');
+    await expect(bridge.getAgentReputation(1)).resolves.toBeNull();
+    await expect(bridge.getGasPrice()).resolves.toBeNull();
   });
 
   test('supports wrapped toolResult payload shape', async () => {
@@ -161,14 +161,30 @@ describe('McpBridge', () => {
     await expect(bridge.getGasPrice()).resolves.toBe('12345');
   });
 
-  test('returns default reputation when tool responds with isError=true', async () => {
+  test('returns null when tool responds with isError=true', async () => {
     mockCallTool.mockResolvedValue({
       isError: true,
       content: [],
     });
 
     const bridge = new McpBridge('http://localhost:3000/mcp');
-    await expect(bridge.getAgentReputation(1)).resolves.toBe(50);
+    await expect(bridge.getAgentReputation(1)).resolves.toBeNull();
+  });
+
+  test('callTool and formatToolResult expose generic MCP work', async () => {
+    mockCallTool.mockResolvedValue({
+      isError: false,
+      structuredContent: {answer: 42},
+      content: [],
+    });
+
+    const bridge = new McpBridge('http://localhost:3000/mcp');
+    const result = await bridge.callTool('do_work', {q: 'life'});
+    expect(mockCallTool).toHaveBeenCalledWith({
+      name: 'do_work',
+      arguments: {q: 'life'},
+    });
+    expect(bridge.formatToolResult(result)).toBe('{"answer":42}');
   });
 
   test('throws on internal ensureConnected after bridge close', async () => {

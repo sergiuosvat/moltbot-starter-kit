@@ -15,10 +15,10 @@ import {createPatchedAbi} from '../src/utils/abi';
 import * as validationAbiJson from '../src/abis/validation-registry.abi.json';
 import * as reputationAbiJson from '../src/abis/reputation-registry.abi.json';
 
-const logger = new Logger('HiringScript');
+const logger = new Logger('EmployerFlowScript');
 
 async function runEmployerFlow() {
-  logger.info('--- Starting Employer Hiring Flow ---');
+  logger.info('--- Starting Facilitator Employer Flow ---');
 
   if (!CONFIG.EMPLOYER.PEM_PATH || !CONFIG.EMPLOYER.ADDRESS) {
     logger.error('Employer PEM_PATH or ADDRESS not configured in .env');
@@ -243,7 +243,7 @@ async function submitReputation(
 
 if (require.main === module) {
   runEmployerFlow().catch(err => {
-    logger.error('Hiring flow failed:', err.message);
+    logger.error('Employer flow failed:', err.message);
     process.exit(1);
   });
 }

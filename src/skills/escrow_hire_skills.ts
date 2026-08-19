@@ -1,17 +1,17 @@
 /**
- * Hire Skill — orchestrates init_job + escrow deposit
+ * Escrow hire — orchestrates init_job + escrow deposit
  *
- * Composite skill that combines validation and escrow into one workflow.
+ * Composite skill for on-chain escrow hiring (distinct from the facilitator
+ * employer demo and from A2A session negotiation).
  */
 import {Logger} from '../utils/logger';
+import {requireTxSuccess} from '../utils/wait_for_tx';
 import {initJob} from './validation_skills';
 import {deposit} from './escrow_skills';
 
-const logger = new Logger('HireSkills');
+const logger = new Logger('EscrowHireSkills');
 
-// ─── Types ─────────────────────────────────────────────────────────────────────
-
-export interface HireAgentParams {
+export interface HireWithEscrowParams {
   jobId: string;
   agentNonce: number;
   agentAddress: string;
@@ -22,17 +22,18 @@ export interface HireAgentParams {
   serviceId?: number;
 }
 
-export interface HireResult {
+export interface HireWithEscrowResult {
   initJobTxHash: string;
   depositTxHash: string;
 }
 
-// ─── hireAgent ─────────────────────────────────────────────────────────────────
+export async function hireWithEscrow(
+  params: HireWithEscrowParams,
+): Promise<HireWithEscrowResult> {
+  logger.info(
+    `Escrow-hiring agent #${params.agentNonce} for job ${params.jobId}`,
+  );
 
-export async function hireAgent(params: HireAgentParams): Promise<HireResult> {
-  logger.info(`Hiring agent #${params.agentNonce} for job ${params.jobId}`);
-
-  // 1. Initialize job on the Validation Registry
   const initJobTxHash = await initJob({
     jobId: params.jobId,
     agentNonce: params.agentNonce,
@@ -41,8 +42,8 @@ export async function hireAgent(params: HireAgentParams): Promise<HireResult> {
     paymentToken: params.paymentToken,
   });
   logger.info(`Job initialized: ${initJobTxHash}`);
+  await requireTxSuccess(initJobTxHash);
 
-  // 2. Deposit funds in escrow
   const deadlineTimestamp =
     Math.floor(Date.now() / 1000) + params.deadlineSeconds;
 
@@ -55,6 +56,7 @@ export async function hireAgent(params: HireAgentParams): Promise<HireResult> {
     token: params.paymentToken,
   });
   logger.info(`Escrow deposited: ${depositTxHash}`);
+  await requireTxSuccess(depositTxHash);
 
   return {initJobTxHash, depositTxHash};
 }
