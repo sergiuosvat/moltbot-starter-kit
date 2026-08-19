@@ -1,0 +1,9 @@
+node_modules
+dist
+coverage
+graphify-out
+.husky
+package-lock.json
+*.pem
+*.db
+*.tsbuildinfo

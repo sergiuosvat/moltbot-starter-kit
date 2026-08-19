@@ -14,12 +14,12 @@ A hardened skill library and payment→process→proof worker for MultiversX.
 
 ## Role in the stack
 
-| Piece | Repo |
-|-------|------|
-| Live agent HTTP / chat / deploy | `mx-openclaw-template-solution` |
-| This worker + chain skills | **moltbot-starter-kit** (you are here) |
-| ACP seller (products/checkout) | `multiversx-acp-adapter` |
-| MultiversX MCP tools | `multiversx-mcp-server` |
+| Piece                           | Repo                                   |
+| ------------------------------- | -------------------------------------- |
+| Live agent HTTP / chat / deploy | `mx-openclaw-template-solution`        |
+| This worker + chain skills      | **moltbot-starter-kit** (you are here) |
+| ACP seller (products/checkout)  | `multiversx-acp-adapter`               |
+| MultiversX MCP tools            | `multiversx-mcp-server`                |
 
 Set `AGENT_URI` to your **template public URL** (pingable). Keep `manifestUri` for IPFS metadata.
 
@@ -129,26 +129,26 @@ npm run register
 
 All skills live in `src/skills/` and are exported from `src/skills/index.ts`:
 
-| Skill File                 | Key exports                                              | Description                                |
-| :------------------------- | :------------------------------------------------------- | :----------------------------------------- |
-| `identity_skills.ts`       | `registerAgent`, `getAgent`, `setMetadata`               | Agent identity on the Identity Registry    |
-| `validation_skills.ts`     | `initJob`, `submitProof`, `isJobVerified`, `getJobData`  | Job lifecycle on the Validation Registry   |
-| `reputation_skills.ts`     | `submitFeedback`, `getReputation`                        | Feedback and reputation scores             |
-| `escrow_skills.ts`         | `deposit`, `release`, `refund`, `getEscrow`              | Escrow fund management                     |
-| `transfer_skills.ts`       | `transfer`, `multiTransfer`                              | EGLD, ESDT, NFT, SFT transfers             |
-| `discovery_skills.ts`      | `discoverAgents`, `getBalance`                           | Agent discovery + balance queries          |
-| `escrow_hire_skills.ts`    | `hireWithEscrow`                                         | Composite: init_job + escrow deposit       |
-| `manifest_skills.ts`       | `buildManifest`, `buildManifestJSON`                     | Registration manifest with OASF validation |
-| `oasf_taxonomy.ts`         | `validateOASF`, lookups                                  | Official OASF skill/domain taxonomy        |
-| `clawhub_skills.ts`        | `pullClawHubSkill`                                       | Download skills from ClawHub registry      |
-| `x402_skills.ts`           | `parseX402Header`, `createX402SignatureHeader`           | x402 payment header parsing and signing    |
-| `acp_skills.ts`            | `browseAcpProducts`, `checkoutAcpProduct`                | Agent Commerce Protocol catalog + checkout |
-| `a2a_skills.ts`            | `pingAgent`, `openA2ASession`                            | Agent-to-agent ping and session open       |
-| `mpp_skills.ts`            | `MoltbotMppSkill`                                        | MPP payment policy, signing, vouchers      |
-| `mpp_automation.ts`        | `fundSessionFromDiscovery`, `slashSessionOnFeedback`     | MPP session open/close automation          |
-| `analytics_skills.ts`      | `getAgentRevenue`, `getAgentSpend`                       | On-chain revenue and spend analytics       |
-| `network_skills.ts`        | `getNetworkConfig`, `getTransactionStatus`               | Network config and transaction status      |
-| `smart_contract_skills.ts` | `queryContract`, `executeContract`                       | Generic contract query and execute         |
+| Skill File                 | Key exports                                             | Description                                |
+| :------------------------- | :------------------------------------------------------ | :----------------------------------------- |
+| `identity_skills.ts`       | `registerAgent`, `getAgent`, `setMetadata`              | Agent identity on the Identity Registry    |
+| `validation_skills.ts`     | `initJob`, `submitProof`, `isJobVerified`, `getJobData` | Job lifecycle on the Validation Registry   |
+| `reputation_skills.ts`     | `submitFeedback`, `getReputation`                       | Feedback and reputation scores             |
+| `escrow_skills.ts`         | `deposit`, `release`, `refund`, `getEscrow`             | Escrow fund management                     |
+| `transfer_skills.ts`       | `transfer`, `multiTransfer`                             | EGLD, ESDT, NFT, SFT transfers             |
+| `discovery_skills.ts`      | `discoverAgents`, `getBalance`                          | Agent discovery + balance queries          |
+| `escrow_hire_skills.ts`    | `hireWithEscrow`                                        | Composite: init_job + escrow deposit       |
+| `manifest_skills.ts`       | `buildManifest`, `buildManifestJSON`                    | Registration manifest with OASF validation |
+| `oasf_taxonomy.ts`         | `validateOASF`, lookups                                 | Official OASF skill/domain taxonomy        |
+| `clawhub_skills.ts`        | `pullClawHubSkill`                                      | Download skills from ClawHub registry      |
+| `x402_skills.ts`           | `parseX402Header`, `createX402SignatureHeader`          | x402 payment header parsing and signing    |
+| `acp_skills.ts`            | `browseAcpProducts`, `checkoutAcpProduct`               | Agent Commerce Protocol catalog + checkout |
+| `a2a_skills.ts`            | `pingAgent`, `openA2ASession`                           | Agent-to-agent ping and session open       |
+| `mpp_skills.ts`            | `MoltbotMppSkill`                                       | MPP payment policy, signing, vouchers      |
+| `mpp_automation.ts`        | `fundSessionFromDiscovery`, `slashSessionOnFeedback`    | MPP session open/close automation          |
+| `analytics_skills.ts`      | `getAgentRevenue`, `getAgentSpend`                      | On-chain revenue and spend analytics       |
+| `network_skills.ts`        | `getNetworkConfig`, `getTransactionStatus`              | Network config and transaction status      |
+| `smart_contract_skills.ts` | `queryContract`, `executeContract`                      | Generic contract query and execute         |
 
 ## Project Structure
 
@@ -183,25 +183,25 @@ moltbot-starter-kit/
 
 All scripts live under `scripts/`. Prefer the `npm run` aliases below; pass extra CLI args after `--`.
 
-| npm script | Script file | Purpose |
-| :--------- | :---------- | :------ |
-| `setup` | `setup.sh` | Install deps, generate wallet, build |
-| `build-manifest` | `build_manifest.ts` | Build `manifest.json` from `manifest.config.json` |
-| `pin-manifest` | `pin_manifest.ts` | Pin manifest to IPFS (Pinata) |
-| `register` | `register.ts` | Register agent on Identity Registry |
-| `update-agent` | `update_agent.ts` | Update on-chain agent (name, URI, metadata, services) |
-| `submit-job-proof` | `submit-job-proof.ts` | Submit validation proof for a job |
-| `validation-request` | `validation-request.ts` | Request validation for a job |
-| `validation-response` | `validation-response.ts` | Submit validation response (score) |
-| `employer-flow` | `employer_flow.ts` | Facilitator employer demo: prepare → settle → feedback |
-| `generate-wallet` | `generate_wallet.ts` | Create `wallet.pem` |
-| `check-balance` | `check_balance.ts` | Query account balance |
-| `fund` | `fund.ts` | Send EGLD from a PEM wallet |
-| `get-chain-id` | `get_chain_id.ts` | Read chain ID from a proxy URL |
-| `pull-skill` | `pull_skill.ts` | Download a skill from ClawHub |
-| `upload-skill` | `upload_skill.ts` | Upload a skill to ClawHub |
-| `sign-tx` | `sign_tx.ts` | Sign a generic transaction |
-| `sign-x402` | `sign_x402.ts` | Sign an x402 payment tx (`--relayer <addr>` for Relayed V3) |
+| npm script            | Script file              | Purpose                                                     |
+| :-------------------- | :----------------------- | :---------------------------------------------------------- |
+| `setup`               | `setup.sh`               | Install deps, generate wallet, build                        |
+| `build-manifest`      | `build_manifest.ts`      | Build `manifest.json` from `manifest.config.json`           |
+| `pin-manifest`        | `pin_manifest.ts`        | Pin manifest to IPFS (Pinata)                               |
+| `register`            | `register.ts`            | Register agent on Identity Registry                         |
+| `update-agent`        | `update_agent.ts`        | Update on-chain agent (name, URI, metadata, services)       |
+| `submit-job-proof`    | `submit-job-proof.ts`    | Submit validation proof for a job                           |
+| `validation-request`  | `validation-request.ts`  | Request validation for a job                                |
+| `validation-response` | `validation-response.ts` | Submit validation response (score)                          |
+| `employer-flow`       | `employer_flow.ts`       | Facilitator employer demo: prepare → settle → feedback      |
+| `generate-wallet`     | `generate_wallet.ts`     | Create `wallet.pem`                                         |
+| `check-balance`       | `check_balance.ts`       | Query account balance                                       |
+| `fund`                | `fund.ts`                | Send EGLD from a PEM wallet                                 |
+| `get-chain-id`        | `get_chain_id.ts`        | Read chain ID from a proxy URL                              |
+| `pull-skill`          | `pull_skill.ts`          | Download a skill from ClawHub                               |
+| `upload-skill`        | `upload_skill.ts`        | Upload a skill to ClawHub                                   |
+| `sign-tx`             | `sign_tx.ts`             | Sign a generic transaction                                  |
+| `sign-x402`           | `sign_x402.ts`           | Sign an x402 payment tx (`--relayer <addr>` for Relayed V3) |
 
 Examples:
 
@@ -249,10 +249,11 @@ See [STARTER_KIT_GUIDE.md](./STARTER_KIT_GUIDE.md#5-deployment) for PM2 and prod
 npm test              # All tests
 npm run test:coverage # With coverage report
 npm run lint          # Check lint + formatting
+npm run format        # Format with Prettier
 npm run fix           # Auto-fix lint + formatting
 ```
 
-A pre-commit hook (husky + lint-staged) runs `gts fix` on staged TypeScript/JavaScript files. Unfixable lint errors block the commit. `npm install` installs the hook via the `prepare` script.
+A pre-commit hook (husky + lint-staged) formats staged files with Prettier, then runs `gts fix` on staged TypeScript/JavaScript. Unfixable lint errors block the commit. `npm install` installs the hook via the `prepare` script.
 
 ## Documentation
 
